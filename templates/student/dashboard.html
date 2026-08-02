@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Student Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Welcome, {{ student.name }}!</h1>
+        <p>Your hostel overview.</p>
+    </div>
+</div>
+
+<div class="cards">
+    <div class="card"><div class="label">My Room</div><div class="value">{{ student.room_no or 'Not allocated' }}</div></div>
+    <div class="card"><div class="label">Unpaid Invoices</div><div class="value">{{ unpaid }}</div></div>
+    <div class="card"><div class="label">Open Complaints</div><div class="value">{{ pending_complaints }}</div></div>
+    <div class="card"><div class="label">Parcels Waiting</div><div class="value">{{ parcels }}</div></div>
+</div>
+
+<div class="section">
+    <h2>Today's Mess Menu ({{ today }})</h2>
+    <table>
+        <thead><tr><th>Meal</th><th>Items</th></tr></thead>
+        <tbody>
+            {% for m in menu %}
+            <tr><td>{{ m.meal_type }}</td><td>{{ m.items_description }}</td></tr>
+            {% else %}
+            <tr><td colspan="2" class="empty">No menu published for today yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not student.room_id %}
+<div class="card" style="margin-top:20px;background:#fcefd0">
+    <p><strong>No room allocated yet.</strong> Please contact the manager for a room allocation.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Rooms{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Rooms</h1>
+        <p>Hostel rooms and occupancy.</p>
+    </div>
+    <a class="btn btn-success" href="{{ url_for('allocate_room') }}">Allocate Room</a>
+</div>
+<table>
+    <thead>
+        <tr><th>Room</th><th>Hostel</th><th>Total Beds</th><th>Available Beds</th><th>Occupants</th><th>Availability</th></tr>
+    </thead>
+    <tbody>
+        {% for r in rooms %}
+        <tr>
+            <td>{{ r.room_no }}</td>
+            <td>{{ r.hostel_name }}</td>
+            <td>{{ r.total_beds }}</td>
+            <td>{{ r.available_beds }}</td>
+            <td>{{ r.occupants }}</td>
+            <td>
+                {% if r.available_beds > 0 %}<span class="badge badge-green">Available</span>
+                {% else %}<span class="badge badge-red">Full</span>{% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty">No rooms found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

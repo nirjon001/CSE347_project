@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Complaints{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Complaints</h1>
+        <p>Review and update complaint statuses.</p>
+    </div>
+</div>
+<table>
+    <thead>
+        <tr><th>ID</th><th>Student</th><th>Room</th><th>Description</th><th>Date</th><th>Status</th><th>Update</th></tr>
+    </thead>
+    <tbody>
+        {% for c in complaints %}
+        <tr>
+            <td>{{ c.complaint_id }}</td>
+            <td>{{ c.student_name }}</td>
+            <td>{{ c.room_no or '-' }}</td>
+            <td>{{ c.description }}</td>
+            <td>{{ c.date }}</td>
+            <td>
+                {% if c.status == 'Pending' %}<span class="badge badge-yellow">Pending</span>
+                {% elif c.status == 'In Progress' %}<span class="badge badge-blue">In Progress</span>
+                {% else %}<span class="badge badge-green">Resolved</span>{% endif %}
+            </td>
+            <td>
+                <form method="post" class="form-row" style="gap:6px">
+                    <input type="hidden" name="complaint_id" value="{{ c.complaint_id }}">
+                    <select name="status" style="padding:5px;font-size:13px">
+                        <option value="Pending" {{ 'selected' if c.status == 'Pending' }}>Pending</option>
+                        <option value="In Progress" {{ 'selected' if c.status == 'In Progress' }}>In Progress</option>
+                        <option value="Resolved" {{ 'selected' if c.status == 'Resolved' }}>Resolved</option>
+                    </select>
+                    <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+                </form>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty">No complaints found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

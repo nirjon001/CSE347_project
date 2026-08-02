@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}My Attendance{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>My Attendance</h1>
+        <p>Mark your attendance for today.</p>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="post">
+        <div class="form-group">
+            <label for="status">Today's status</label>
+            <select id="status" name="status">
+                <option value="Present">Present</option>
+                <option value="Leave">Leave</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Record Today</button>
+    </form>
+</div>
+
+<div class="section">
+    <h2>Attendance History</h2>
+    <table>
+        <thead><tr><th>Date</th><th>Status</th></tr></thead>
+        <tbody>
+            {% for r in records %}
+            <tr>
+                <td>{{ r.date }}</td>
+                <td>
+                    {% if r.status == 'Present' %}<span class="badge badge-green">Present</span>
+                    {% elif r.status == 'Absent' %}<span class="badge badge-red">Absent</span>
+                    {% else %}<span class="badge badge-blue">Leave</span>{% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="2" class="empty">No attendance recorded yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

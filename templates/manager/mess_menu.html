@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Mess Menu{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Mess Menu</h1>
+        <p>Set the menu for each day and meal.</p>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="post">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="day_of_week">Day</label>
+                <select id="day_of_week" name="day_of_week">
+                    <option value="Saturday">Saturday</option>
+                    <option value="Sunday">Sunday</option>
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="meal_type">Meal</label>
+                <select id="meal_type" name="meal_type">
+                    <option value="Breakfast">Breakfast</option>
+                    <option value="Lunch">Lunch</option>
+                    <option value="Dinner">Dinner</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="items_description">Items</label>
+            <input type="text" id="items_description" name="items_description" placeholder="e.g. Rice, Chicken Curry, Salad" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Menu</button>
+    </form>
+</div>
+
+<div class="section">
+    <h2>Current Menu</h2>
+    <table>
+        <thead><tr><th>Day</th><th>Meal</th><th>Items</th></tr></thead>
+        <tbody>
+            {% for m in menu %}
+            <tr>
+                <td>{{ m.day_of_week }}</td>
+                <td>{{ m.meal_type }}</td>
+                <td>{{ m.items_description }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="empty">No menu entries yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

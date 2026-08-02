@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Allocate Room{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Allocate Room</h1>
+        <p>Assign an unallocated student to a room with free beds.</p>
+    </div>
+</div>
+
+{% if not students or not rooms %}
+    <div class="card">
+        <p class="empty">
+            {% if not students %}No unallocated students available.{% endif %}
+            {% if not rooms %}No rooms with free beds available.{% endif %}
+        </p>
+    </div>
+{% else %}
+    <div class="form-card">
+        <form method="post">
+            <div class="form-group">
+                <label for="student_id">Student</label>
+                <select id="student_id" name="student_id" required>
+                    {% for s in students %}
+                    <option value="{{ s.student_id }}">{{ s.name }} (ID: {{ s.student_id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="room_id">Room</label>
+                <select id="room_id" name="room_id" required>
+                    {% for r in rooms %}
+                    <option value="{{ r.room_id }}">{{ r.room_no }} ({{ r.available_beds }} free)</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success">Allocate</button>
+        </form>
+    </div>
+{% endif %}
+{% endblock %}

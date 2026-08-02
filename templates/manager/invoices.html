@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Invoices{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Invoices</h1>
+        <p>Generate and manage student invoices.</p>
+    </div>
+</div>
+
+<div class="section">
+    <h2>Generate New Invoice</h2>
+    <div class="form-card">
+        <form method="post">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="student_id">Student</label>
+                    <select id="student_id" name="student_id" required>
+                        {% for s in students %}
+                        <option value="{{ s.student_id }}">{{ s.name }} (ID: {{ s.student_id }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="amount">Amount</label>
+                    <input type="number" step="0.01" min="0" id="amount" name="amount" required>
+                </div>
+                <div class="form-group">
+                    <label for="due_date">Due date</label>
+                    <input type="date" id="due_date" name="due_date" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Generate</button>
+        </form>
+    </div>
+</div>
+
+<div class="section">
+    <h2>All Invoices</h2>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Student</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+            {% for i in invoices %}
+            <tr>
+                <td>{{ i.invoice_id }}</td>
+                <td>{{ i.student_name }}</td>
+                <td>{{ i.amount }}</td>
+                <td>{{ i.due_date }}</td>
+                <td>
+                    {% if i.payment_status == 'Paid' %}<span class="badge badge-green">Paid</span>
+                    {% elif i.payment_status == 'Unpaid' %}<span class="badge badge-yellow">Unpaid</span>
+                    {% else %}<span class="badge badge-red">Overdue</span>{% endif %}
+                </td>
+                <td>
+                    <form method="post" action="{{ url_for('toggle_invoice', invoice_id=i.invoice_id) }}">
+                        <button type="submit" class="btn btn-ghost btn-sm">
+                            Mark {{ 'Unpaid' if i.payment_status == 'Paid' else 'Paid' }}
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="empty">No invoices yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

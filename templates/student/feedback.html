@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Feedback{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Feedback</h1>
+        <p>Share your thoughts about the hostel and mess.</p>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="post">
+        <div class="form-group">
+            <label for="description">Your feedback</label>
+            <textarea id="description" name="description" rows="3" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Feedback</button>
+    </form>
+</div>
+
+<div class="section">
+    <h2>My Feedback</h2>
+    <table>
+        <thead><tr><th>ID</th><th>Description</th><th>Date</th></tr></thead>
+        <tbody>
+            {% for f in feedbacks %}
+            <tr>
+                <td>{{ f.feedback_id }}</td>
+                <td>{{ f.description }}</td>
+                <td>{{ f.date }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="empty">You have not submitted any feedback.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

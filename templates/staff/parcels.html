@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Parcels{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Parcels</h1>
+        <p>Mark parcels as collected when students pick them up.</p>
+    </div>
+</div>
+<table>
+    <thead>
+        <tr><th>ID</th><th>Student</th><th>Received</th><th>Status</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+        {% for p in parcels %}
+        <tr>
+            <td>{{ p.parcel_id }}</td>
+            <td>{{ p.student_name }}</td>
+            <td>{{ p.received_date }}</td>
+            <td>
+                {% if p.status == 'Arrived' %}<span class="badge badge-yellow">Arrived</span>
+                {% else %}<span class="badge badge-green">Collected</span>{% endif %}
+            </td>
+            <td>
+                {% if p.status == 'Arrived' %}
+                <form method="post">
+                    <input type="hidden" name="parcel_id" value="{{ p.parcel_id }}">
+                    <button type="submit" class="btn btn-success btn-sm">Mark Collected</button>
+                </form>
+                {% else %}<span class="muted">Done</span>{% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty">No parcels recorded.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Parcels{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>My Parcels</h1>
+        <p>Parcels received at the hostel desk.</p>
+    </div>
+</div>
+<table>
+    <thead>
+        <tr><th>ID</th><th>Received Date</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+        {% for p in parcels %}
+        <tr>
+            <td>{{ p.parcel_id }}</td>
+            <td>{{ p.received_date }}</td>
+            <td>
+                {% if p.status == 'Arrived' %}<span class="badge badge-yellow">Arrived</span>
+                {% else %}<span class="badge badge-green">Collected</span>{% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="empty">No parcels for you yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Hostel Management System{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+{% if session_role %}
+<nav class="navbar">
+    <a class="brand" href="{{ url_for('dashboard') }}">Hostel<span>MS</span></a>
+    <div class="nav-links">
+        {% if session_role == 'manager' %}
+            <a href="{{ url_for('manager_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('manager_students') }}">Students</a>
+            <a href="{{ url_for('manager_rooms') }}">Rooms</a>
+            <a href="{{ url_for('manager_complaints') }}">Complaints</a>
+            <a href="{{ url_for('manager_invoices') }}">Invoices</a>
+            <a href="{{ url_for('manager_attendance') }}">Attendance</a>
+            <a href="{{ url_for('manager_mess_menu') }}">Mess Menu</a>
+            <a href="{{ url_for('manager_violations') }}">Violations</a>
+            <a href="{{ url_for('manager_visitors') }}">Visitors</a>
+            <a href="{{ url_for('manager_staff') }}">Staff</a>
+        {% elif session_role == 'student' %}
+            <a href="{{ url_for('student_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('student_profile') }}">Profile</a>
+            <a href="{{ url_for('student_room') }}">My Room</a>
+            <a href="{{ url_for('student_complaints') }}">Complaints</a>
+            <a href="{{ url_for('student_invoices') }}">Invoices</a>
+            <a href="{{ url_for('student_mess_off') }}">Mess Off</a>
+            <a href="{{ url_for('student_feedback') }}">Feedback</a>
+            <a href="{{ url_for('student_in_out') }}">In / Out</a>
+            <a href="{{ url_for('student_parcels') }}">Parcels</a>
+        {% elif session_role == 'staff' %}
+            <a href="{{ url_for('staff_dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('staff_visitors') }}">Visitors</a>
+            <a href="{{ url_for('staff_parcels') }}">Parcels</a>
+            <a href="{{ url_for('staff_attendance') }}">Attendance</a>
+        {% endif %}
+        <a href="{{ url_for('change_password') }}">Change Password</a>
+        <span class="nav-user">{{ session_username }} ({{ session_role }})</span>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+</nav>
+{% endif %}
+
+<div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</div>
+
+<div class="footer">Hostel Management System &middot; CSE347 &middot; Information System Analysis &amp; Design</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

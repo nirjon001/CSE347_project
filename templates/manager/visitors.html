@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Visitor Logs{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Visitor Logs</h1>
+        <p>All visitors registered by staff at the front desk.</p>
+    </div>
+</div>
+<table>
+    <thead>
+        <tr><th>ID</th><th>Visitor</th><th>Visiting</th><th>Date</th><th>Registered By</th></tr>
+    </thead>
+    <tbody>
+        {% for v in visitors %}
+        <tr>
+            <td>{{ v.visitor_id }}</td>
+            <td>{{ v.visitor_name }}</td>
+            <td>{{ v.student_name }}</td>
+            <td>{{ v.visit_date }}</td>
+            <td>{{ v.registered_by or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty">No visitors registered yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

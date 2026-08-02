@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Complaints{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Complaints</h1>
+        <p>Submit a complaint or track existing ones.</p>
+    </div>
+</div>
+
+<div class="form-card">
+    <form method="post">
+        <div class="form-group">
+            <label for="description">Describe your complaint</label>
+            <textarea id="description" name="description" rows="3" placeholder="e.g. The water heater in my room is not working." required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit Complaint</button>
+    </form>
+</div>
+
+<div class="section">
+    <h2>My Complaints</h2>
+    <table>
+        <thead><tr><th>ID</th><th>Description</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody>
+            {% for c in complaints %}
+            <tr>
+                <td>{{ c.complaint_id }}</td>
+                <td>{{ c.description }}</td>
+                <td>{{ c.date }}</td>
+                <td>
+                    {% if c.status == 'Pending' %}<span class="badge badge-yellow">Pending</span>
+                    {% elif c.status == 'In Progress' %}<span class="badge badge-blue">In Progress</span>
+                    {% else %}<span class="badge badge-green">Resolved</span>{% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="empty">You have not submitted any complaints.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
