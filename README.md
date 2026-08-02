@@ -46,16 +46,61 @@ A web-based hostel management system built for **CSE347: Information System Anal
 ## Project Structure
 
 ```
-app.py                     # Flask app: all routes (auth, manager, student, staff)
-config.py                  # DB connection + secret key settings
-db.py                      # Parameterized query/execute helpers
-hostel_management_schema.sql  # MySQL schema (17 tables)
-seed_data.sql              # Demo data + accounts
-requirements.txt
-templates/                 # Jinja2 HTML pages
-static/css/style.css       # Stylesheet
-static/js/main.js          # Confirm-dialog helper
-report.md                  # Full code walkthrough (how every part works)
+CSE347_project/
+│
+├── app.py                          # Flask app: all routes (auth, manager, student, staff)
+├── config.py                       # DB connection + secret key settings
+├── db.py                           # Parameterized query/execute helpers
+├── requirements.txt                # Python dependencies
+│
+├── hostel_management_schema.sql    # MySQL schema (17 tables)
+├── seed_data.sql                   # Demo data + accounts
+│
+├── templates/                      # Jinja2 HTML pages
+│   ├── base.html                   #   shared layout (navbar, flashes, footer)
+│   ├── home.html                   #   landing page
+│   ├── auth/                       #   login + change-password pages
+│   │   ├── login.html
+│   │   └── change_password.html
+│   ├── manager/                    #   manager dashboard + feature pages
+│   │   ├── dashboard.html
+│   │   ├── students.html
+│   │   ├── register_student.html
+│   │   ├── rooms.html
+│   │   ├── allocate_room.html
+│   │   ├── complaints.html
+│   │   ├── invoices.html
+│   │   ├── attendance.html
+│   │   ├── mess_menu.html
+│   │   ├── violations.html
+│   │   ├── visitors.html
+│   │   └── staff.html
+│   ├── student/                    #   student dashboard + feature pages
+│   │   ├── dashboard.html
+│   │   ├── profile.html
+│   │   ├── room.html
+│   │   ├── complaints.html
+│   │   ├── invoices.html
+│   │   ├── mess_off.html
+│   │   ├── feedback.html
+│   │   ├── in_out.html
+│   │   └── parcels.html
+│   └── staff/                      #   staff dashboard + feature pages
+│       ├── dashboard.html
+│       ├── visitors.html
+│       ├── parcels.html
+│       └── attendance.html
+│
+├── static/                         # Static assets
+│   ├── css/
+│   │   └── style.css               #   stylesheet
+│   └── js/
+│       └── main.js                 #   confirm-dialog helper
+│
+├── report.md                       # Full code walkthrough (how every part works)
+├── class_diagram (1).svg           # UML class diagram (17 classes)
+├── Requirements Definition.pdf     # Functional & non-functional requirements
+└── AGENTS .md                      # Project memory / handoff notes
 ```
 
 ## Documentation
