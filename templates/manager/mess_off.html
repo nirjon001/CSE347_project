@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Mess Off Requests{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Mess Off Requests</h1>
+        <p>Approve or reject student mess off requests.</p>
+    </div>
+</div>
+<table>
+    <thead>
+        <tr><th>ID</th><th>Student</th><th>Start</th><th>End</th><th>Status</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+        {% for r in requests %}
+        <tr>
+            <td>{{ r.mess_off_id }}</td>
+            <td>{{ r.student_name }}</td>
+            <td>{{ r.start_date }}</td>
+            <td>{{ r.end_date }}</td>
+            <td>
+                {% if r.status == 'Approved' %}<span class="badge badge-green">Approved</span>
+                {% elif r.status == 'Rejected' %}<span class="badge badge-red">Rejected</span>
+                {% else %}<span class="badge badge-yellow">Pending</span>{% endif %}
+            </td>
+            <td>
+                {% if r.status == 'Pending' %}
+                <form method="post" class="form-row" style="gap:6px">
+                    <input type="hidden" name="request_id" value="{{ r.mess_off_id }}">
+                    <button type="submit" name="status" value="Approved" class="btn btn-success btn-sm">Approve</button>
+                    <button type="submit" name="status" value="Rejected" class="btn btn-danger btn-sm">Reject</button>
+                </form>
+                {% else %}<span class="muted">No action</span>{% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty">No mess off requests yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

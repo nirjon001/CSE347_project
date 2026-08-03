@@ -47,7 +47,7 @@
 <div class="section">
     <h2>Staff Members</h2>
     <table>
-        <thead><tr><th>ID</th><th>Name</th><th>Username</th><th>Designation</th><th>Salary</th></tr></thead>
+        <thead><tr><th>ID</th><th>Name</th><th>Username</th><th>Designation</th><th>Salary</th><th>Actions</th></tr></thead>
         <tbody>
             {% for st in staff_members %}
             <tr>
@@ -56,9 +56,14 @@
                 <td>{{ st.username }}</td>
                 <td>{{ st.designation }}</td>
                 <td>{{ st.salary }}</td>
+                <td>
+                    <form method="post" action="{{ url_for('delete_staff', staff_id=st.staff_id) }}" data-confirm="Delete {{ st.name }} permanently?">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </td>
             </tr>
             {% else %}
-            <tr><td colspan="5" class="empty">No staff members yet.</td></tr>
+            <tr><td colspan="6" class="empty">No staff members yet.</td></tr>
             {% endfor %}
         </tbody>
     </table>

@@ -4,30 +4,57 @@
 <div class="page-header">
     <div>
         <h1>Rooms</h1>
-        <p>Hostel rooms and occupancy.</p>
+        <p>Hostel rooms and occupancy. Add rooms with custom bed capacity.</p>
     </div>
-    <a class="btn btn-success" href="{{ url_for('allocate_room') }}">Allocate Room</a>
+    <div>
+        <a class="btn btn-ghost" href="{{ url_for('add_hostel') }}">+ Add Hostel</a>
+        <a class="btn btn-primary" href="{{ url_for('add_room') }}">+ Add Room</a>
+        <a class="btn btn-success" href="{{ url_for('allocate_room') }}">Allocate Room</a>
+    </div>
 </div>
-<table>
-    <thead>
-        <tr><th>Room</th><th>Hostel</th><th>Total Beds</th><th>Available Beds</th><th>Occupants</th><th>Availability</th></tr>
-    </thead>
-    <tbody>
-        {% for r in rooms %}
-        <tr>
-            <td>{{ r.room_no }}</td>
-            <td>{{ r.hostel_name }}</td>
-            <td>{{ r.total_beds }}</td>
-            <td>{{ r.available_beds }}</td>
-            <td>{{ r.occupants }}</td>
-            <td>
-                {% if r.available_beds > 0 %}<span class="badge badge-green">Available</span>
-                {% else %}<span class="badge badge-red">Full</span>{% endif %}
-            </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="6" class="empty">No rooms found.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+
+<div class="section">
+    <h2>Hostels</h2>
+    <table>
+        <thead><tr><th>ID</th><th>Name</th><th>Location</th><th>Rooms</th></tr></thead>
+        <tbody>
+            {% for h in hostels %}
+            <tr>
+                <td>{{ h.hostel_id }}</td>
+                <td>{{ h.hostel_name }}</td>
+                <td>{{ h.location or '-' }}</td>
+                <td>{{ h.total_rooms }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="empty">No hostels yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="section">
+    <h2>Rooms</h2>
+    <table>
+        <thead>
+            <tr><th>Room</th><th>Hostel</th><th>Capacity</th><th>Available Beds</th><th>Occupants</th><th>Availability</th></tr>
+        </thead>
+        <tbody>
+            {% for r in rooms %}
+            <tr>
+                <td>{{ r.room_no }}</td>
+                <td>{{ r.hostel_name }}</td>
+                <td>{{ r.total_beds }}</td>
+                <td>{{ r.available_beds }}</td>
+                <td>{{ r.occupants }}</td>
+                <td>
+                    {% if r.available_beds > 0 %}<span class="badge badge-green">Available</span>
+                    {% else %}<span class="badge badge-red">Full</span>{% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="empty">No rooms found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

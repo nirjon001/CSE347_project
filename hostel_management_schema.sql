@@ -7,6 +7,10 @@
 CREATE DATABASE IF NOT EXISTS hostel_management;
 USE hostel_management;
 
+-- Enforce strict SQL mode so ENUM columns reject invalid values instead of
+-- silently storing an empty string (MariaDB is non-strict by default).
+SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION';
+
 -- ---------------------------------------------------------------------
 -- 1. USERS  (base table — mirrors the User superclass)
 -- ---------------------------------------------------------------------
@@ -111,11 +115,16 @@ CREATE TABLE visitors (
 ) ENGINE=InnoDB;
 
 CREATE TABLE parcels (
-    parcel_id      INT AUTO_INCREMENT PRIMARY KEY,
-    student_id     INT NOT NULL,
-    status         ENUM('Arrived', 'Collected') DEFAULT 'Arrived',
-    received_date  DATE NOT NULL,
-    FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
+    parcel_id           INT AUTO_INCREMENT PRIMARY KEY,
+    student_id          INT NOT NULL,          -- who the parcel is for
+    received_by_staff   INT NULL,              -- staff who logged the parcel arrival
+    status              ENUM('Arrived', 'Collected') DEFAULT 'Arrived',
+    received_date       DATE NOT NULL,
+    collected_at        DATETIME NULL,         -- when the student collected it
+    collected_by_staff  INT NULL,              -- staff who handed it over
+    FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (received_by_staff) REFERENCES staff(staff_id) ON DELETE SET NULL,
+    FOREIGN KEY (collected_by_staff) REFERENCES staff(staff_id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE mess_off_requests (
@@ -166,6 +175,8 @@ CREATE TABLE violations (
     staff_id      INT NULL,
     description   TEXT NOT NULL,
     date          DATE NOT NULL,
+    status        ENUM('Open', 'Resolved') NOT NULL DEFAULT 'Open',
+    resolved_at   DATE NULL,
     recorded_by   INT NOT NULL,           -- manager_id or staff_id who logged it
     FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE,
@@ -196,3 +207,20 @@ CREATE INDEX idx_complaints_student  ON complaints(student_id);
 CREATE INDEX idx_invoices_student    ON invoices(student_id);
 CREATE INDEX idx_parcels_student     ON parcels(student_id);
 CREATE INDEX idx_visitors_student    ON visitors(student_id);
+
+-- ---------------------------------------------------------------------
+-- Triggers: keep room bed counts consistent at the database level
+-- (a deleted student's bed must be freed automatically)
+-- ---------------------------------------------------------------------
+DROP TRIGGER IF EXISTS trg_student_delete_bed;
+DELIMITER //
+CREATE TRIGGER trg_student_delete_bed
+AFTER DELETE ON students
+FOR EACH ROW
+BEGIN
+    IF OLD.room_id IS NOT NULL THEN
+        UPDATE rooms SET available_beds = available_beds + 1
+        WHERE room_id = OLD.room_id;
+    END IF;
+END//
+DELIMITER ;

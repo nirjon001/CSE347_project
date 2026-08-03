@@ -24,10 +24,15 @@
 
 | Username   | Password   | Role    |
 |------------|------------|---------|
-| `manager`  | `admin123` | Manager |
-| `staff1`   | `staff123` | Staff   |
-| `student1` | `student123` | Student |
-| `student2` | `student123` | Student (no room yet) |
+| `manager`  | `admin123` | Manager (Ayesha Rahman) |
+| `staff1`   | `staff123` | Staff — Caretaker (Karim Mia) |
+| `staff2`   | `staff123` | Staff — Cook (Rashida Begum) |
+| `staff3`   | `staff123` | Staff — Guard (Hanif Uddin) |
+| `student1` | `student123` | Student — Rafi (room 101) |
+| `student2` | `student123` | Student — Sadia (no room) |
+| `student3` | `student123` | Student — Tanvir (room 201) |
+| `student4` | `student123` | Student — Nusrat (room 301) |
+| `student5` | `student123` | Student — Mehedi (no room) |
 
 ---
 
@@ -135,20 +140,27 @@ A decorator is a "wrapper" function: `@login_required` above a route means "run 
 
 | URL | Class method it maps to | What it does |
 |---|---|---|
-| `/manager` | — | Dashboard: counts of students/rooms/complaints/invoices + recent complaints & violations |
+| `/manager` | — | Dashboard: counts of students/rooms/complaints/invoices + open violations + pending mess-off requests + recent complaints & violations |
 | `/manager/students` | `viewStudents` | Lists all students joined with their username and room |
 | `/manager/students/register` | `registerStudent()` | Creates a `users` row (role=student, hashed password) then a `students` row — two inserts in a transaction-like sequence |
-| `/manager/students/delete/<id>` | `deleteStudent(id)` | Deletes the user (ON DELETE CASCADE removes the student row), and if they had a room, **returns the bed** by incrementing `available_beds` |
-| `/manager/rooms` | `viewRooms()` | Shows each room, hostel, bed counts and current occupants |
+| `/manager/students/delete/<id>` | `deleteStudent(id)` | Deletes the user (ON DELETE CASCADE removes the student row), and if they had a room, **returns the bed** by incrementing `available_beds` (see trigger note in §6) |
+| `/manager/rooms` | `viewRooms()` | Shows each hostel, each room, bed counts and current occupants |
+| `/manager/hostels/add` | — | Add a **new hostel** (name + location); `total_rooms` starts at 0 |
+| `/manager/rooms/add` | — | Add a room with a **custom bed capacity** (any number ≥ 1) to any hostel; rejects duplicates and zero capacity |
 | `/manager/rooms/allocate` | `allocateRoom()` | The Room Allocation sequence diagram #3. Uses `SELECT ... FOR UPDATE` to lock the room row, refuses allocation if `available_beds <= 0`, else decrements beds and sets the student's `room_id` |
 | `/manager/complaints` | `viewComplaint` / `resolveComplaint` | Lists complaints with student+room; a form updates status to Pending/In Progress/Resolved |
 | `/manager/invoices` | `generateInvoice()` | Creates a new invoice for a student with amount + due date |
 | `/manager/invoices/toggle/<id>` | `updatePaymentStatus()` | Flips an invoice between Paid/Unpaid |
 | `/manager/attendance` | `recordStudentAttendance()` `recordStaffAttendance()` | Records attendance; `ON DUPLICATE KEY UPDATE` lets you overwrite the same (student, date) instead of erroring |
 | `/manager/mess-menu` | `updateMessMenu()` | Upserts a menu item per (day, meal) slot |
-| `/manager/violations` | `recordViolation()` | Inserts a violation for a student **or** a staff member — exactly one of the two, matching the CHECK constraint |
+| `/manager/violations` | `recordViolation()` / `resolveViolation()` | Inserts a violation for a student **or** a staff member — exactly one of the two, matching the CHECK constraint; each row shows Open/Resolved status |
+| `/manager/violations/resolve/<id>` | `resolveViolation(id)` | Marks a violation **Resolved** and stores `resolved_at` (clears it from the open-violations count) |
+| `/manager/feedback` | — | Manager **views** all student feedback (with student names) |
+| `/manager/mess-off` | `approveMessOff()` | Manager **approves or rejects** pending mess-off requests (the pending count on the dashboard drops) |
+| `/manager/parcels` | — | Manager **views** all parcels with who received them and who/when collected them |
 | `/manager/visitors` | `viewVisitorLogs()` | Manager **views** visitor logs (staff registers them) |
 | `/manager/staff` | `addStaff()` | Creates a `users` + `staff` row (caretaker/cook/watchman/guard...) |
+| `/manager/staff/delete/<id>` | — | Deletes a staff member (cascades their attendance; visitor/parcel "received by" references become NULL). You cannot delete yourself |
 
 #### Student routes (Student class methods)
 
@@ -162,7 +174,7 @@ A decorator is a "wrapper" function: `@login_required` above a route means "run 
 | `/student/mess-off` | `applyMessOff()` | Request mess-off with start/end date (status Pending) |
 | `/student/feedback` | `submitFeedback()` | Submit and view own feedback |
 | `/student/in-out` | `submitLeaveRequest()` | Record a departure (out_date, reason); status starts as Out |
-| `/student/parcels` | `viewParcels` | List own parcels and whether collected |
+| `/student/parcels` | `viewParcels` | List own parcels, the staff member who received it, and the collected date/who handed it over |
 
 #### Staff routes (Staff class methods)
 
@@ -170,7 +182,8 @@ A decorator is a "wrapper" function: `@login_required` above a route means "run 
 |---|---|---|
 | `/staff` | — | Dashboard: visitors today, arrived parcels, own attendance |
 | `/staff/visitors` | `registerVisitor()` | The front-desk workflow — staff registers a visitor against a student; `registered_by_staff` stores the staff id |
-| `/staff/parcels` | `updateParcelStatus()` | Marks an Arrived parcel as Collected |
+| `/staff/parcels` | `updateParcelStatus()` | **Receive** a new parcel (records which staff member took it in) and **mark an Arrived parcel as Collected** (records `collected_at` + which staff member handed it over) |
+| `/staff/in-out` | — | Records a student's **return** — for any record currently `Out`, sets the `in_date` and status to Returned |
 | `/staff/attendance` | `recordAttendance()` | Staff marks own Present/Leave for today (upsert) |
 
 #### The final block
@@ -191,18 +204,18 @@ Flask uses **Jinja2** templates. A template is HTML with `{{ variable }}` (print
 ### `base.html` — the shared layout
 Every other page says `{% extends "base.html" %}` at the top. That means base.html provides:
 - The `<head>` with the stylesheet link.
-- The **navbar** — and here is the clever part: it reads `session_role` and shows different menu links for manager / student / staff, plus username, role badge, and Logout.
+- The **navbar** — and here is the clever part: it reads `session_role` and shows different menu links for manager / student / staff, plus a user chip (initial avatar + username + colour-coded role badge) and Logout.
 - **Flash messages** — `get_flashed_messages()` displays the green/red/yellow notices produced by `flash()` in `app.py`.
-- The footer.
+- The footer (`© 2026 Hostel Management System (HMS). All rights reserved.`).
 - The `<script>` tag for `main.js`.
 
 A page that extends base.html only writes its own content inside `{% block content %}...{% endblock %}`.
 
 ### The three page families
-- `auth/` — `login.html` (centered card on a gradient background) and `change_password.html`.
-- `manager/` — dashboard + 10 feature pages (students, register student, rooms, allocate room, complaints, invoices, attendance, mess menu, violations, visitors, staff).
+- `auth/` — `login.html` (full-screen gradient with a centred, branded card: `HM` monogram logo, system title, demo-account hint, and a **show/hide password** eye toggle) and `change_password.html` (same password toggle on all three fields).
+- `manager/` — dashboard + 16 feature pages (students, register student, rooms, add hostel, add room, allocate room, complaints, invoices, attendance, mess menu, violations, visitors, staff, feedback, mess off, parcels).
 - `student/` — dashboard + 8 pages (profile, room, complaints, invoices, mess off, feedback, in/out, parcels).
-- `staff/` — dashboard + 3 pages (visitors, parcels, attendance).
+- `staff/` — dashboard + 4 pages (visitors, parcels, in/out, attendance).
 
 ### A typical form page (e.g. `manager/register_student.html`)
 ```html
@@ -241,11 +254,19 @@ The `badge` classes color-code status: green=Paid/Resolved/Collected/Present/App
 Creates `hostel_management` and the 17 tables exactly matching the UML class diagram:
 - `users` (base / superclass) + `managers`, `staff`, `students` (subtype tables, each linked by a `user_id` FK) — this is **table-per-subtype inheritance**.
 - Feature tables: `complaints`, `invoices`, `student_attendance`, `staff_attendance`, `visitors`, `parcels`, `mess_off_requests`, `feedback`, `student_in_out`, `violations`, `mess_menu`, plus `hostels` and `rooms`.
-- `violations` has a `CHECK` constraint so a violation belongs to exactly **one** of student/staff.
+- `violations` has a `CHECK` constraint so a violation belongs to exactly **one** of student/staff, plus a `status` ENUM (`Open`/`Resolved`) and `resolved_at`.
+- `parcels` tracks `received_by_staff`, `collected_at` and `collected_by_staff` (both staff FKs are `ON DELETE SET NULL`).
 - Indexes speed up common lookups (e.g. `idx_complaints_student`).
+- The script sets **strict SQL mode** (`STRICT_TRANS_TABLES`) so ENUM/CHECK columns reject bad data instead of silently storing an empty string — the app's `db.py` does the same on every connection.
+- A **trigger** `trg_student_delete_bed` frees a bed when a `students` row is deleted directly.
+
+> MariaDB note: triggers do **not** fire on cascaded deletes, so when the app deletes a student through the `users` row it increments `available_beds` explicitly in code; the trigger covers direct `students`-row deletions. Both paths keep the invariant *occupied + available = total*.
+
+### `migrations.sql`
+For anyone who already loaded the **old** schema: run it once to add the new `parcels` columns, the violation columns, and the trigger without losing data. It is **idempotent** — every statement is guarded (`ADD COLUMN IF NOT EXISTS` for columns, an `information_schema` check for the two foreign keys, `DROP TRIGGER IF EXISTS` for the trigger) — so it is safe to run any number of times, even on an already-updated database (it simply does nothing).
 
 ### `seed_data.sql`
-Inserts demo records (4 users, 1 manager, 1 staff, 1 hostel, 2 rooms, 2 students, menu, invoices, one complaint, one feedback). Passwords are stored as **scrypt hashes**, never plain text.
+Inserts demo records (9 users, 1 manager, 3 staff, 2 hostels with varied capacities, 5 students, menu, invoices, complaints, feedback, parcels, violations, mess-off and in/out records). Passwords are stored as **scrypt hashes**, never plain text.
 
 ---
 
@@ -272,12 +293,12 @@ Every class method from `class_diagram.svg` has a matching code route:
 | `Manager.viewRooms()` | `/manager/rooms` |
 | `Manager.generateInvoice()` | `/manager/invoices` |
 | `Manager.updateMessMenu()` | `/manager/mess-menu` |
-| `Manager.approveMessOff()` | `/manager/mess-menu` (status updates via same pattern) |
+| `Manager.approveMessOff()` | `/manager/mess-off` |
 | `Manager.recordStudentAttendance()` / `recordStaffAttendance()` | `/manager/attendance` |
-| `Manager.recordViolation()` / `viewViolation()` | `/manager/violations` |
+| `Manager.recordViolation()` / `viewViolation()` / `resolveViolation()` | `/manager/violations` / `/manager/violations/resolve/<id>` |
 | `Manager.viewVisitorLogs()` | `/manager/visitors` |
 | `Staff.registerVisitor()` | `/staff/visitors` |
-| `Staff.updateParcelStatus()` | `/staff/parcels` |
+| `Staff.updateParcelStatus()` | `/staff/parcels` (receive + collect) |
 | `Staff.recordAttendance()` | `/staff/attendance` |
 | `Student.viewProfile()` / `viewRoom()` | `/student/profile` / `/student/room` |
 | `Student.submitComplaint()` | `/student/complaints` |

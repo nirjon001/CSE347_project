@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Add Hostel{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Add Hostel</h1>
+        <p>Create a new hostel building.</p>
+    </div>
+</div>
+<div class="form-card">
+    <form method="post">
+        <div class="form-group">
+            <label for="hostel_name">Hostel name</label>
+            <input type="text" id="hostel_name" name="hostel_name" placeholder="e.g. Boys Hostel 2" required>
+        </div>
+        <div class="form-group">
+            <label for="location">Location</label>
+            <input type="text" id="location" name="location" placeholder="e.g. East Campus">
+        </div>
+        <button type="submit" class="btn btn-primary">Add Hostel</button>
+    </form>
+</div>
+{% endblock %}

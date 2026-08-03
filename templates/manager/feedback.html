@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Feedback{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Student Feedback</h1>
+        <p>Feedback submitted by students.</p>
+    </div>
+</div>
+<table>
+    <thead>
+        <tr><th>ID</th><th>Student</th><th>Feedback</th><th>Date</th></tr>
+    </thead>
+    <tbody>
+        {% for f in feedbacks %}
+        <tr>
+            <td>{{ f.feedback_id }}</td>
+            <td>{{ f.student_name }}</td>
+            <td>{{ f.description }}</td>
+            <td>{{ f.date }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="empty">No feedback submitted yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

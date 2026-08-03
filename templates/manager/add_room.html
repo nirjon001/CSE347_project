@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Add Room{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Add Room</h1>
+        <p>Create a room with a custom bed capacity.</p>
+    </div>
+</div>
+<div class="form-card">
+    <form method="post">
+        <div class="form-group">
+            <label for="hostel_id">Hostel</label>
+            <select id="hostel_id" name="hostel_id" required>
+                {% for h in hostels %}
+                <option value="{{ h.hostel_id }}">{{ h.hostel_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="room_no">Room number</label>
+                <input type="text" id="room_no" name="room_no" placeholder="e.g. 103" required>
+            </div>
+            <div class="form-group">
+                <label for="total_beds">Bed capacity</label>
+                <input type="number" id="total_beds" name="total_beds" min="1" value="2" required>
+            </div>
+        </div>
+        <p class="muted">Available beds start equal to the capacity.</p>
+        <button type="submit" class="btn btn-primary">Add Room</button>
+    </form>
+</div>
+{% endblock %}

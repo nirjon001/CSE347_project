@@ -5,10 +5,10 @@ A web-based hostel management system built for **CSE347: Information System Anal
 ## Features
 
 - **Role-based login** — separate dashboards for Manager, Student, and Staff (Flask sessions + hashed passwords)
-- **Manager**: register/delete students, allocate rooms, manage complaints & invoices, record attendance, update the mess menu, record violations, view visitor logs, manage staff
-- **Student**: view profile & room, submit complaints, view invoices, apply mess-off, give feedback, record in/out, check parcels
-- **Staff**: register visitors at the front desk, mark parcels collected, record own attendance
-- **Security**: scrypt password hashing, parameterized SQL (SQL-injection safe), role-guarded routes
+- **Manager**: register/delete students, allocate rooms, add hostels & rooms with custom bed capacity, manage complaints & invoices, record attendance, update the mess menu, record & resolve violations, view student feedback, approve/reject mess-off requests, view all parcels, view visitor logs, manage & delete staff
+- **Student**: view profile & room, submit complaints, view invoices, apply mess-off, give feedback, record in/out, check parcels (who received them, when collected)
+- **Staff**: register visitors at the front desk, receive & hand over parcels (with audit trail), record student returns, record own attendance
+- **Security**: scrypt password hashing, parameterized SQL (SQL-injection safe), role-guarded routes, strict SQL mode so invalid data is rejected
 
 ## Tech Stack
 
@@ -41,6 +41,8 @@ The app needs the schema plus some demo data. There are two ways — pick one.
 2. Click **Import** → **Choose File**
 3. Select `hostel_management_schema.sql` → **Go** (creates the `hostel_management` database + all 17 tables)
 4. Import `seed_data.sql` the same way (adds demo accounts & records)
+
+> **Already used the old version?** Run `migrations.sql` instead of re-importing the schema — it adds the new columns/foreign keys/trigger without wiping your data. It is safe to run any time (it skips anything that already exists, so re-running causes no errors).
 
 **Option B — command line:**
 
@@ -83,17 +85,24 @@ You should see `Running on http://127.0.0.1:5000`. Open that URL in a browser an
 
 - Log in as **manager** — you should see the Manager dashboard with student/room/complaint counts.
 - Try **Register Student** → then **Allocate Room** to that student.
-- Log in as **student1** to see the student side (complaints, invoices, mess menu).
-- Log in as **staff1** to register a visitor and mark parcels collected.
+- Try **Add Hostel** then **Add Room** with a custom capacity, and allocate a student into it.
+- Try **Violations → Resolve**, **Mess Off → Approve/Reject**, and open **Feedback** / **Parcels** views.
+- Log in as **student1** to see the student side (complaints, invoices, mess menu, parcels).
+- Log in as **staff1** to register a visitor, receive/collect a parcel, and mark a student as returned.
 
 ## Demo Accounts
 
 | Username   | Password   | Role    |
 |------------|------------|---------|
-| `manager`  | `admin123` | Manager |
-| `staff1`   | `staff123` | Staff   |
-| `student1` | `student123` | Student |
-| `student2` | `student123` | Student (no room allocated) |
+| `manager`  | `admin123` | Manager (Ayesha Rahman) |
+| `staff1`   | `staff123` | Staff — Caretaker (Karim Mia) |
+| `staff2`   | `staff123` | Staff — Cook (Rashida Begum) |
+| `staff3`   | `staff123` | Staff — Guard (Hanif Uddin) |
+| `student1` | `student123` | Student — Rafi (room 101) |
+| `student2` | `student123` | Student — Sadia (no room) |
+| `student3` | `student123` | Student — Tanvir (room 201) |
+| `student4` | `student123` | Student — Nusrat (room 301) |
+| `student5` | `student123` | Student — Mehedi (no room) |
 
 ## Troubleshooting
 
@@ -117,7 +126,8 @@ CSE347_project/
 ├── db.py                           # Parameterized query/execute helpers
 ├── requirements.txt                # Python dependencies
 │
-├── hostel_management_schema.sql    # MySQL schema (17 tables)
+├── hostel_management_schema.sql    # MySQL schema (17 tables + trigger)
+├── migrations.sql                  # Upgrades an old schema to the current one
 ├── seed_data.sql                   # Demo data + accounts
 │
 ├── templates/                      # Jinja2 HTML pages
@@ -130,15 +140,20 @@ CSE347_project/
 │   │   ├── dashboard.html
 │   │   ├── students.html
 │   │   ├── register_student.html
-│   │   ├── rooms.html
+│   │   ├── rooms.html              #   shows hostels + rooms, add buttons
+│   │   ├── add_hostel.html
+│   │   ├── add_room.html
 │   │   ├── allocate_room.html
 │   │   ├── complaints.html
 │   │   ├── invoices.html
 │   │   ├── attendance.html
 │   │   ├── mess_menu.html
-│   │   ├── violations.html
+│   │   ├── violations.html         #   status + resolve button
+│   │   ├── feedback.html
+│   │   ├── mess_off.html           #   approve / reject
+│   │   ├── parcels.html
 │   │   ├── visitors.html
-│   │   └── staff.html
+│   │   └── staff.html              #   + delete buttons
 │   ├── student/                    #   student dashboard + feature pages
 │   │   ├── dashboard.html
 │   │   ├── profile.html
@@ -148,11 +163,12 @@ CSE347_project/
 │   │   ├── mess_off.html
 │   │   ├── feedback.html
 │   │   ├── in_out.html
-│   │   └── parcels.html
+│   │   └── parcels.html            #   shows received_by / collected info
 │   └── staff/                      #   staff dashboard + feature pages
 │       ├── dashboard.html
 │       ├── visitors.html
-│       ├── parcels.html
+│       ├── parcels.html            #   receive + collect forms
+│       ├── in_out.html             #   mark students returned
 │       └── attendance.html
 │
 ├── static/                         # Static assets

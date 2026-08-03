@@ -3,7 +3,11 @@ from config import DB_CONFIG
 
 
 def get_connection():
-    return mysql.connector.connect(**DB_CONFIG)
+    conn = mysql.connector.connect(**DB_CONFIG)
+    cur = conn.cursor()
+    cur.execute("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
+    cur.close()
+    return conn
 
 
 def query(sql, params=(), one=False):

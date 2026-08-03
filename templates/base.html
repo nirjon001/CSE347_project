@@ -6,7 +6,7 @@
     <title>{% block title %}Hostel Management System{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 {% if session_role %}
 <nav class="navbar">
     <a class="brand" href="{{ url_for('dashboard') }}">Hostel<span>MS</span></a>
@@ -19,8 +19,11 @@
             <a href="{{ url_for('manager_invoices') }}">Invoices</a>
             <a href="{{ url_for('manager_attendance') }}">Attendance</a>
             <a href="{{ url_for('manager_mess_menu') }}">Mess Menu</a>
+            <a href="{{ url_for('manager_mess_off') }}">Mess Off</a>
             <a href="{{ url_for('manager_violations') }}">Violations</a>
+            <a href="{{ url_for('manager_feedback') }}">Feedback</a>
             <a href="{{ url_for('manager_visitors') }}">Visitors</a>
+            <a href="{{ url_for('manager_parcels') }}">Parcels</a>
             <a href="{{ url_for('manager_staff') }}">Staff</a>
         {% elif session_role == 'student' %}
             <a href="{{ url_for('student_dashboard') }}">Dashboard</a>
@@ -36,29 +39,36 @@
             <a href="{{ url_for('staff_dashboard') }}">Dashboard</a>
             <a href="{{ url_for('staff_visitors') }}">Visitors</a>
             <a href="{{ url_for('staff_parcels') }}">Parcels</a>
+            <a href="{{ url_for('staff_in_out') }}">In / Out</a>
             <a href="{{ url_for('staff_attendance') }}">Attendance</a>
         {% endif %}
         <a href="{{ url_for('change_password') }}">Change Password</a>
-        <span class="nav-user">{{ session_username }} ({{ session_role }})</span>
+        <span class="nav-user">
+            <span class="nav-avatar">{{ session_username[0]|upper }}</span>
+            <span class="nav-username">{{ session_username }}</span>
+            <span class="nav-role nav-role-{{ session_role }}">{{ session_role }}</span>
+        </span>
         <a href="{{ url_for('logout') }}">Logout</a>
     </div>
 </nav>
 {% endif %}
 
 <div class="container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <ul class="flashes">
-                {% for category, message in messages %}
-                    <li class="{{ category }}">{{ message }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
+    {% block flashes %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+    {% endblock %}
     {% block content %}{% endblock %}
 </div>
 
-<div class="footer">Hostel Management System &middot; CSE347 &middot; Information System Analysis &amp; Design</div>
+<div class="footer">&copy; 2026 Hostel Management System (HMS). All rights reserved.</div>
 
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

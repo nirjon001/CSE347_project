@@ -3,28 +3,30 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>My Parcels</h1>
-        <p>Parcels received at the hostel desk.</p>
+        <h1>Parcels</h1>
+        <p>All parcels received at the front desk.</p>
     </div>
 </div>
 <table>
     <thead>
-        <tr><th>ID</th><th>Received Date</th><th>Received By</th><th>Status</th><th>Collected At</th></tr>
+        <tr><th>ID</th><th>Student</th><th>Received Date</th><th>Received By</th><th>Status</th><th>Collected By</th><th>Collected At</th></tr>
     </thead>
     <tbody>
         {% for p in parcels %}
         <tr>
             <td>{{ p.parcel_id }}</td>
+            <td>{{ p.student_name }}</td>
             <td>{{ p.received_date }}</td>
             <td>{{ p.received_by or '-' }}</td>
             <td>
                 {% if p.status == 'Arrived' %}<span class="badge badge-yellow">Arrived</span>
                 {% else %}<span class="badge badge-green">Collected</span>{% endif %}
             </td>
+            <td>{{ p.collected_by or '-' }}</td>
             <td>{{ p.collected_at or '-' }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="empty">No parcels for you yet.</td></tr>
+        <tr><td colspan="7" class="empty">No parcels recorded.</td></tr>
         {% endfor %}
     </tbody>
 </table>

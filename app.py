@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from functools import wraps
 
 from flask import (
@@ -136,6 +136,8 @@ def manager_dashboard():
         'rooms': query('SELECT COUNT(*) AS c FROM rooms', one=True)['c'],
         'pending_complaints': query("SELECT COUNT(*) AS c FROM complaints WHERE status = 'Pending'", one=True)['c'],
         'unpaid_invoices': query("SELECT COUNT(*) AS c FROM invoices WHERE payment_status = 'Unpaid'", one=True)['c'],
+        'open_violations': query("SELECT COUNT(*) AS c FROM violations WHERE status = 'Open'", one=True)['c'],
+        'pending_mess_off': query("SELECT COUNT(*) AS c FROM mess_off_requests WHERE status = 'Pending'", one=True)['c'],
         'open_visitors': query('SELECT COUNT(*) AS c FROM visitors', one=True)['c'],
     }
     recent_complaints = query(
@@ -211,6 +213,8 @@ def delete_student(student_id):
             flash('Student not found.', 'danger')
             return redirect(url_for('manager_students'))
         cur.execute('DELETE FROM users WHERE user_id = %s', (student['user_id'],))
+        # MariaDB does not fire the bed-freed trigger on cascaded deletes,
+        # so free the bed explicitly here.
         if student['room_id']:
             cur.execute(
                 'UPDATE rooms SET available_beds = available_beds + 1 WHERE room_id = %s',
@@ -236,7 +240,57 @@ def manager_rooms():
         '(SELECT COUNT(*) FROM students s WHERE s.room_id = r.room_id) AS occupants '
         'FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id ORDER BY r.room_id'
     )
-    return render_template('manager/rooms.html', rooms=rooms)
+    hostels = query('SELECT hostel_id, hostel_name, location, total_rooms FROM hostels ORDER BY hostel_id')
+    return render_template('manager/rooms.html', rooms=rooms, hostels=hostels)
+
+
+@app.route('/manager/hostels/add', methods=['GET', 'POST'])
+@login_required
+@role_required('manager')
+def add_hostel():
+    if request.method == 'POST':
+        hostel_name = request.form.get('hostel_name', '').strip()
+        location = request.form.get('location', '').strip()
+        if not hostel_name:
+            flash('Hostel name is required.', 'danger')
+        else:
+            execute(
+                'INSERT INTO hostels (hostel_name, location, total_rooms) VALUES (%s, %s, 0)',
+                (hostel_name, location),
+            )
+            flash(f'Hostel "{hostel_name}" added.', 'success')
+            return redirect(url_for('manager_rooms'))
+    return render_template('manager/add_hostel.html')
+
+
+@app.route('/manager/rooms/add', methods=['GET', 'POST'])
+@login_required
+@role_required('manager')
+def add_room():
+    if request.method == 'POST':
+        hostel_id = request.form.get('hostel_id')
+        room_no = request.form.get('room_no', '').strip()
+        total_beds = request.form.get('total_beds', '0')
+        try:
+            total_beds = int(total_beds)
+        except ValueError:
+            total_beds = 0
+        if not (hostel_id and room_no):
+            flash('Hostel and room number are required.', 'danger')
+        elif total_beds < 1:
+            flash('Capacity must be at least 1.', 'danger')
+        elif query('SELECT room_id FROM rooms WHERE hostel_id = %s AND room_no = %s', (hostel_id, room_no), one=True):
+            flash('That room number already exists in this hostel.', 'danger')
+        else:
+            execute(
+                'INSERT INTO rooms (hostel_id, room_no, total_beds, available_beds) VALUES (%s, %s, %s, %s)',
+                (hostel_id, room_no, total_beds, total_beds),
+            )
+            execute('UPDATE hostels SET total_rooms = total_rooms + 1 WHERE hostel_id = %s', (hostel_id,))
+            flash(f'Room {room_no} added with {total_beds} beds.', 'success')
+            return redirect(url_for('manager_rooms'))
+    hostels = query('SELECT hostel_id, hostel_name FROM hostels ORDER BY hostel_id')
+    return render_template('manager/add_room.html', hostels=hostels)
 
 
 @app.route('/manager/rooms/allocate', methods=['GET', 'POST'])
@@ -415,6 +469,62 @@ def manager_violations():
     return render_template('manager/violations.html', violations=violations, students=students, staff_members=staff_members)
 
 
+@app.route('/manager/violations/resolve/<int:violation_id>', methods=['POST'])
+@login_required
+@role_required('manager')
+def resolve_violation(violation_id):
+    execute(
+        'UPDATE violations SET status = %s, resolved_at = %s WHERE violation_id = %s',
+        ('Resolved', date.today().isoformat(), violation_id),
+    )
+    flash('Violation marked as resolved.', 'success')
+    return redirect(url_for('manager_violations'))
+
+
+@app.route('/manager/feedback')
+@login_required
+@role_required('manager')
+def manager_feedback():
+    feedbacks = query(
+        'SELECT f.*, s.name AS student_name FROM feedback f '
+        'JOIN students s ON f.student_id = s.student_id '
+        'ORDER BY f.date DESC, f.feedback_id DESC'
+    )
+    return render_template('manager/feedback.html', feedbacks=feedbacks)
+
+
+@app.route('/manager/mess-off', methods=['GET', 'POST'])
+@login_required
+@role_required('manager')
+def manager_mess_off():
+    if request.method == 'POST':
+        request_id = request.form.get('request_id')
+        status = request.form.get('status')
+        execute('UPDATE mess_off_requests SET status = %s WHERE mess_off_id = %s', (status, request_id))
+        flash(f'Mess off request {status.lower()}.', 'success')
+        return redirect(url_for('manager_mess_off'))
+    requests = query(
+        'SELECT r.*, s.name AS student_name FROM mess_off_requests r '
+        'JOIN students s ON r.student_id = s.student_id '
+        'ORDER BY r.mess_off_id DESC'
+    )
+    return render_template('manager/mess_off.html', requests=requests)
+
+
+@app.route('/manager/parcels')
+@login_required
+@role_required('manager')
+def manager_parcels():
+    parcels = query(
+        'SELECT p.*, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
+        'FROM parcels p JOIN students s ON p.student_id = s.student_id '
+        'LEFT JOIN staff r ON p.received_by_staff = r.staff_id '
+        'LEFT JOIN staff c ON p.collected_by_staff = c.staff_id '
+        'ORDER BY p.received_date DESC, p.parcel_id DESC'
+    )
+    return render_template('manager/parcels.html', parcels=parcels)
+
+
 @app.route('/manager/visitors')
 @login_required
 @role_required('manager')
@@ -455,6 +565,33 @@ def manager_staff():
             return redirect(url_for('manager_staff'))
     staff_members = query('SELECT st.*, u.username FROM staff st JOIN users u ON st.user_id = u.user_id ORDER BY st.staff_id')
     return render_template('manager/staff.html', staff_members=staff_members)
+
+
+@app.route('/manager/staff/delete/<int:staff_id>', methods=['POST'])
+@login_required
+@role_required('manager')
+def delete_staff(staff_id):
+    if staff_id == session.get('role_id'):
+        flash('You cannot delete yourself.', 'danger')
+        return redirect(url_for('manager_staff'))
+    conn = get_connection()
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute('SELECT user_id FROM staff WHERE staff_id = %s', (staff_id,))
+        staff = cur.fetchone()
+        if not staff:
+            flash('Staff not found.', 'danger')
+            return redirect(url_for('manager_staff'))
+        cur.execute('DELETE FROM users WHERE user_id = %s', (staff['user_id'],))
+        conn.commit()
+        flash('Staff deleted successfully.', 'success')
+    except Exception:
+        conn.rollback()
+        flash('Could not delete staff.', 'danger')
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for('manager_staff'))
 
 
 # =====================================================================
@@ -626,7 +763,11 @@ def student_in_out():
 @role_required('student')
 def student_parcels():
     parcels = query(
-        'SELECT * FROM parcels WHERE student_id = %s ORDER BY received_date DESC, parcel_id DESC',
+        'SELECT p.*, r.name AS received_by, c.name AS collected_by '
+        'FROM parcels p '
+        'LEFT JOIN staff r ON p.received_by_staff = r.staff_id '
+        'LEFT JOIN staff c ON p.collected_by_staff = c.staff_id '
+        'WHERE p.student_id = %s ORDER BY p.received_date DESC, p.parcel_id DESC',
         (session['role_id'],),
     )
     return render_template('student/parcels.html', parcels=parcels)
@@ -690,15 +831,60 @@ def staff_visitors():
 @role_required('staff')
 def staff_parcels():
     if request.method == 'POST':
-        parcel_id = request.form.get('parcel_id')
-        execute("UPDATE parcels SET status = 'Collected' WHERE parcel_id = %s", (parcel_id,))
-        flash('Parcel marked as collected.', 'success')
+        action = request.form.get('action')
+        if action == 'receive':
+            student_id = request.form.get('student_id')
+            received_date = request.form.get('received_date')
+            if student_id and received_date:
+                execute(
+                    'INSERT INTO parcels (student_id, received_by_staff, status, received_date) '
+                    'VALUES (%s, %s, %s, %s)',
+                    (student_id, session['role_id'], 'Arrived', received_date),
+                )
+                flash('Parcel received and registered.', 'success')
+        elif action == 'collect':
+            parcel_id = request.form.get('parcel_id')
+            execute(
+                "UPDATE parcels SET status = 'Collected', collected_at = %s, collected_by_staff = %s "
+                'WHERE parcel_id = %s',
+                (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), session['role_id'], parcel_id),
+            )
+            flash('Parcel marked as collected.', 'success')
         return redirect(url_for('staff_parcels'))
+    students = query('SELECT student_id, name FROM students ORDER BY student_id')
     parcels = query(
-        'SELECT p.*, s.name AS student_name FROM parcels p '
-        'JOIN students s ON p.student_id = s.student_id ORDER BY p.received_date DESC, p.parcel_id DESC'
+        'SELECT p.*, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
+        'FROM parcels p JOIN students s ON p.student_id = s.student_id '
+        'LEFT JOIN staff r ON p.received_by_staff = r.staff_id '
+        'LEFT JOIN staff c ON p.collected_by_staff = c.staff_id '
+        'ORDER BY p.received_date DESC, p.parcel_id DESC'
     )
-    return render_template('staff/parcels.html', parcels=parcels)
+    return render_template('staff/parcels.html', students=students, parcels=parcels)
+
+
+@app.route('/staff/in-out', methods=['GET', 'POST'])
+@login_required
+@role_required('staff')
+def staff_in_out():
+    if request.method == 'POST':
+        record_id = request.form.get('record_id')
+        execute(
+            "UPDATE student_in_out SET in_date = %s, status = %s WHERE record_id = %s AND status = 'Out'",
+            (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Returned', record_id),
+        )
+        flash('Student marked as returned.', 'success')
+        return redirect(url_for('staff_in_out'))
+    out_records = query(
+        'SELECT io.*, s.name AS student_name FROM student_in_out io '
+        'JOIN students s ON io.student_id = s.student_id '
+        "WHERE io.status = 'Out' ORDER BY io.out_date DESC"
+    )
+    history = query(
+        'SELECT io.*, s.name AS student_name FROM student_in_out io '
+        'JOIN students s ON io.student_id = s.student_id '
+        "WHERE io.status = 'Returned' ORDER BY io.in_date DESC, io.record_id DESC LIMIT 20"
+    )
+    return render_template('staff/in_out.html', out_records=out_records, history=history)
 
 
 @app.route('/staff/attendance', methods=['GET', 'POST'])
