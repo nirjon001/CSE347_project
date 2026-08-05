@@ -9,3 +9,6 @@ env/
 
 # Session notes / logs
 session-ses*.md
+
+# Secrets (web database credentials — never commit)
+scripts/.web-db.env

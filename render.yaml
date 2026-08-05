@@ -1,0 +1,30 @@
+# Render Blueprint — free deployment of the web copy.
+#
+# 1. Sign up at render.com (free).
+# 2. Push this repo to GitHub, then in Render: New -> Blueprint, pick the repo.
+# 3. Render creates the free web service below and runs `gunicorn app:app`.
+# 4. In the service's Environment tab set the real DB_* values from your free
+#    MySQL host (Aiven free MySQL) and keep DB_SSL_CA=certs/aiven-ca.pem.
+# 5. Run scripts\init_web_db.bat once so the web database has the schema + seed.
+services:
+  - type: web
+    name: hostel-management
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: DB_HOST
+        value: ""
+      - key: DB_USER
+        value: ""
+      - key: DB_PASSWORD
+        value: ""
+      - key: DB_NAME
+        value: ""
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_SSL_CA
+        value: "certs/aiven-ca.pem"
+      - key: SECRET_KEY
+        generateValue: true

@@ -74,12 +74,13 @@ Rules to remember:
 ### 3.1 `config.py` — Settings
 
 ```python
-DB_CONFIG = {'host': '127.0.0.1', 'user': 'root', 'password': '', 'database': 'hostel_management', ...}
-SECRET_KEY = 'cse347-hostel-management-secret-key'
+import os
+DB_CONFIG = {'host': os.environ.get('DB_HOST', '127.0.0.1'), 'user': os.environ.get('DB_USER', 'root'), ...}
+SECRET_KEY = os.environ.get('SECRET_KEY', 'cse347-hostel-management-secret-key')
 ```
 
-- `DB_CONFIG` is the dictionary every database connection is built from. XAMPP's default MySQL user is `root` with an **empty password** — that is why `password` is `''`. If your XAMPP has a password, change it here only.
-- `SECRET_KEY` is used by Flask to sign the session cookie (the thing that keeps you "logged in" between requests).
+- `DB_CONFIG` is the dictionary every database connection is built from. Every value is read from an environment variable with the local XAMPP default as the fallback — XAMPP's MySQL `root` user has an **empty password**, which is why `password` defaults to `''`. On the deployed copy, Render's environment supplies the free MySQL host's values, so **the same file works locally and on the web** (see README → Deploy to the Web).
+- `SECRET_KEY` is used by Flask to sign the session cookie (the thing that keeps you "logged in" between requests). On the web copy it comes from an environment variable (Render generates one).
 
 ### 3.2 `db.py` — The database bridge
 

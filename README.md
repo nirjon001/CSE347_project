@@ -62,18 +62,21 @@ If the `mysql` command is on your PATH (it is *not* by default with XAMPP — us
 pip install -r requirements.txt
 ```
 
-This installs **Flask** and **mysql-connector-python**.
+This installs **Flask**, **mysql-connector-python**, and **gunicorn** (the web server used on the deployed copy).
 
 ### 5. Check the database settings (only if your MySQL uses a password)
 
-Open `config.py`. By default XAMPP's MySQL `root` user has an **empty password**, so nothing needs to change. If your MySQL root has a password, update it here:
+`config.py` reads every setting from an environment variable and falls back to XAMPP's defaults. With no variables set it behaves exactly as before — XAMPP's MySQL `root` user has an **empty password**, so nothing needs to change. If your MySQL root has a password, either set `DB_PASSWORD` in your environment or edit the default here:
 
 ```python
+import os
 DB_CONFIG = {
-    'host': '127.0.0.1',
-    'user': 'root',
-    'password': 'YOUR_PASSWORD_HERE',   # empty by default in XAMPP
-    'database': 'hostel_management',
+    'host':     os.environ.get('DB_HOST', '127.0.0.1'),
+    'user':     os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', ''),   # set this for a passworded root
+    'database': os.environ.get('DB_NAME', 'hostel_management'),
+    'port':     int(os.environ.get('DB_PORT', '3306')),
+    'charset':  'utf8mb4',
 }
 ```
 
@@ -109,6 +112,42 @@ You should see `Running on http://127.0.0.1:5000`. Open that URL in a browser an
 | `student4` | `student123` | Student — Nusrat (room 301) |
 | `student5` | `student123` | Student — Mehedi (no room) |
 
+## Deploy to the Web (free)
+
+The **same code** runs locally *and* as a free web copy. The database settings are read from environment variables, so only *where MySQL lives* changes — not the code.
+
+### Architecture
+
+- **Local copy** — XAMPP MySQL at `127.0.0.1` (unchanged).
+- **Web copy** — hosted on **Render** (free web service) backed by a **free external MySQL**. Recommended host: **Aiven free MySQL** (current MySQL 8, always-free, 1 GB, no credit card, remote access over TLS). Other free MySQL hosts tend to be unusable for this project — freesqldatabase.com runs ancient MySQL 5.5 (the schema's triggers/`CURRENT_TIMESTAMP` defaults can't import) and db4free.net's domain has been hijacked.
+- **Data sync** — `scripts\init_web_db.bat` imports the schema + seed once; `scripts\sync_web_db.bat` copies data either way on demand. Both delegate to `scripts\web_db.py`, which uses **mysql-connector-python** (already a project dependency) because XAMPP's MariaDB client can't authenticate to MySQL 8 hosts (they use the `caching_sha2_password` plugin).
+
+### One-time setup
+
+1. **Create the web database on Aiven** (aiven.io):
+   - Sign up (GitHub/Google account works, **no credit card**), then **Create a service** → **MySQL** → the **free** plan → pick a region → create.
+   - Open the service, click **Create database** and name it **`hostel_management`**.
+   - Copy the connection details: **host**, **port**, **user**, **password**. Also download the **CA certificate** (Service settings → CA Certificate) and save it as **`certs\aiven-ca.pem`** inside this project folder.
+2. **Fill in the credentials** — copy `scripts\.web-db.env.example` → `scripts\.web-db.env` and edit it (the real file is git-ignored): set `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME=hostel_management`, `DB_SSL_CA=certs\aiven-ca.pem`, and keep `DB_STRIP_USING=1` (imports into your Aiven database without needing `CREATE DATABASE`).
+3. **Import schema + seed once** (uses `mysql-connector-python` from step 4's `pip install`; it creates `hostel_management` on Aiven and imports the 18 tables + 3 triggers + seed data):
+   ```
+   scripts\init_web_db.bat
+   ```
+4. **Deploy to Render** — push this repo to GitHub, then on render.com choose **New → Blueprint** and select the repo. `render.yaml` configures the free web service automatically (`gunicorn app:app`). In the service's **Environment** tab set `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT` (Aiven's port isn't 3306 — use the real one) and `SECRET_KEY` (Render generates one by default). The site goes live at `https://hostel-management.onrender.com`.
+
+> **TLS note**: Aiven requires encrypted connections. The app and scripts pick this up from `DB_SSL_CA` (the CA certificate is public, so it's committed with the repo). If you use a different host that doesn't need TLS, leave `DB_SSL_CA` blank.
+
+### Sync data between local and web
+
+```
+scripts\sync_web_db.bat push   # local -> web (upload your data)
+scripts\sync_web_db.bat pull   # web   -> local (download the web data)
+```
+
+`push` dumps your local XAMPP DB and imports it into the web DB; `pull` is the reverse. Both read `scripts\.web-db.env`.
+
+> **Free-tier notes**: Render's free web service sleeps when idle and expires after ~30 days unless you add a billing method. Aiven's free MySQL powers itself off after a period of inactivity — wake it from the Aiven console before a demo (takes a minute). The web DB uses the same schema + 3 triggers as local.
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -121,6 +160,7 @@ You should see `Running on http://127.0.0.1:5000`. Open that URL in a browser an
 | Pages load but login always fails | The seed data wasn't imported. Re-run `seed_data.sql` (step 3). |
 | Database `hostel_management` not found | The schema wasn't imported. Re-run `hostel_management_schema.sql` (step 3). |
 | Attendance says "outside the area" | The browser's GPS is farther than the hostel's `radius_m` from its `lat`/`lng`. On a deployed server the browser may block geolocation unless the site is HTTPS — `localhost` always works. |
+| `scripts\init_web_db.bat` fails with a privileges error | The free host restricts `CREATE DATABASE` or `CREATE TRIGGER`. Keep `DB_STRIP_USING=1` and use a host that allows triggers (Aiven does). |
 
 ## Project Structure
 
@@ -128,9 +168,19 @@ You should see `Running on http://127.0.0.1:5000`. Open that URL in a browser an
 CSE347_project/
 │
 ├── app.py                          # Flask app: all routes (auth, manager, student, staff)
-├── config.py                       # DB connection + secret key settings
+├── config.py                       # DB connection + secret key (env-var driven, XAMPP defaults)
 ├── db.py                           # Parameterized query/execute helpers
 ├── requirements.txt                # Python dependencies
+├── render.yaml                     # Render Blueprint (free web service, gunicorn app:app)
+│
+├── scripts/                        # Web-deploy helpers (read scripts\.web-db.env)
+│   ├── web_db.py                   #   Python CLI: init (import schema+seed), drop, push, pull
+│   ├── init_web_db.bat             #   wrapper -> web_db.py init
+│   ├── sync_web_db.bat             #   wrapper -> web_db.py push / pull
+│   └── .web-db.env.example         #   credentials template (real file is git-ignored)
+│
+├── certs/                          # TLS CA certificate for the web DB (public, e.g. Aiven)
+│   └── aiven-ca.pem                #   referenced by DB_SSL_CA
 │
 ├── hostel_management_schema.sql    # MySQL schema (18 tables + 3 triggers)
 ├── migrations.sql                  # Upgrades an old schema to the current one (idempotent)
