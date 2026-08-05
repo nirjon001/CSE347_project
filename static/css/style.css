@@ -21,45 +21,81 @@ body {
     flex-direction: column;
 }
 
-/* ---------- Top navigation ---------- */
-.navbar {
+/* ---------- Left sidebar navigation ---------- */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 230px;
+    height: 100vh;
     background: var(--primary);
     color: #fff;
-    padding: 0 24px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 56px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+    flex-direction: column;
+    padding: 16px 12px;
+    overflow: hidden;
+    z-index: 100;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, .15);
 }
 
-.navbar .brand {
+.sidebar .brand {
     color: #fff;
     font-weight: 700;
     font-size: 18px;
     text-decoration: none;
+    padding: 8px 12px 18px;
+    display: block;
 }
 
-.navbar .brand span { color: var(--accent); }
+.sidebar .brand span { color: var(--accent); }
 
-.nav-links { display: flex; align-items: center; gap: 18px; }
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    overflow-y: auto;
+}
 
-.nav-links a {
+.sidebar-nav a,
+.sidebar-footer a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     color: #dbe4ee;
     text-decoration: none;
     font-size: 14px;
-    transition: color .15s;
+    padding: 9px 12px;
+    border-radius: var(--radius);
+    transition: color .15s, background .15s;
 }
 
-.nav-links a:hover { color: #fff; }
+.sidebar-nav a:hover,
+.sidebar-footer a:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, .08);
+}
+
+.nav-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-top: 1px solid #4a5b6d;
+    padding-top: 12px;
+    margin-top: 8px;
+}
 
 .nav-user {
     display: flex;
     align-items: center;
     gap: 8px;
-    border-left: 1px solid #4a5b6d;
-    padding-left: 18px;
-    margin-left: 18px;
+    padding: 6px 12px 12px;
 }
 
 .nav-avatar {
@@ -103,6 +139,8 @@ body {
     padding: 24px;
     flex: 1;
 }
+
+body.has-sidebar .container { margin-left: 250px; }
 
 .page-header {
     display: flex;
@@ -269,6 +307,8 @@ tbody tr:hover { background: #fafbfd; }
 .badge-yellow { background: #fcefd0; color: #9c6d0c; }
 .badge-blue { background: #d7e8f8; color: #25689b; }
 .badge-gray { background: #e4e7ea; color: #5b6670; }
+.badge-green-soft { padding: 6px 12px; border-radius: 999px; background: #d5f0e0; color: #1e7d44; font-weight: 600; }
+.badge-red-soft { padding: 6px 12px; border-radius: 999px; background: #f9dcd8; color: #a63a2c; font-weight: 600; }
 
 /* ---------- Flash messages ---------- */
 .flashes {
@@ -404,6 +444,108 @@ body.auth-page .container {
     padding: 14px;
 }
 
+body.has-sidebar .footer { margin-left: 250px; }
+
 .empty { color: var(--muted); font-style: italic; }
 
 .muted { color: var(--muted); font-size: 13px; }
+
+/* ---------- Notifications ---------- */
+.notif-link { position: relative; }
+
+.notif-badge {
+    margin-left: auto;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+}
+
+.notif-list { display: flex; flex-direction: column; gap: 10px; }
+
+.notif-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    background: #fff;
+}
+
+.notif-item.unread { background: #f3f8fd; border-left: 4px solid var(--primary); }
+
+.notif-title {
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.notif-title:hover { color: var(--primary); }
+
+.notif-message { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+.notif-time { display: block; color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+/* ---------- Geo-fence attendance map ---------- */
+.map-canvas { height: 380px; border-radius: var(--radius); border: 1px solid var(--border); }
+
+/* ---------- Checkbox labels ---------- */
+.check-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.check-label input { width: auto; }
+
+/* ---------- Tabs (Violations page) ---------- */
+.tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 18px;
+    padding-bottom: 10px;
+}
+.tab-btn {
+    background: #eef1f4;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.tab-btn:hover { color: var(--primary); }
+.tab-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ---------- Filter chips ---------- */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.chip {
+    background: #fff;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.chip:hover { color: var(--primary); }
+.chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* ---------- Inline row notify ---------- */
+.actions-cell { white-space: nowrap; }
+.row-notify { margin: 6px 0; }
+.row-notify form { display: flex; gap: 6px; align-items: flex-start; }
+.row-notify textarea { flex: 1; min-width: 180px; }
+
