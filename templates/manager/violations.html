@@ -4,68 +4,183 @@
 <div class="page-header">
     <div>
         <h1>Violations</h1>
-        <p>Record and review rule violations by students or staff.</p>
+        <p>Record violations, send notices, and manage resolutions.</p>
     </div>
 </div>
 
-<div class="form-card wide">
-    <form method="post">
-        <div class="form-row">
-            <div class="form-group">
-                <label for="target">Violator is</label>
-                <select id="target" name="target">
-                    <option value="student">Student</option>
-                    <option value="staff">Staff</option>
-                </select>
+<div class="section">
+    <div class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="tab-record" type="button">Record Violation</button>
+        <button class="tab-btn" data-tab="tab-notice" type="button">Send Notice</button>
+        <button class="tab-btn" data-tab="tab-list" type="button">All Violations ({{ violations|length }})</button>
+    </div>
+
+    <div id="tab-record" class="tab-panel active">
+        <form method="post">
+            <input type="hidden" name="action" value="record">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="target">Violator is</label>
+                    <select id="target" name="target">
+                        <option value="student">Student</option>
+                        <option value="staff">Staff</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="target_id">Person</label>
+                    <select id="target_id" name="target_id" required>
+                        {% for s in students %}
+                        <option value="{{ s.student_id }}" data-type="student">Student: {{ s.name }}</option>
+                        {% endfor %}
+                        {% for st in staff_members %}
+                        <option value="{{ st.staff_id }}" data-type="staff">Staff: {{ st.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
             <div class="form-group">
-                <label for="target_id">Person</label>
-                <select id="target_id" name="target_id" required>
-                    {% for s in students %}
-                    <option value="{{ s.student_id }}">Student: {{ s.name }}</option>
-                    {% endfor %}
-                    {% for st in staff_members %}
-                    <option value="{{ st.staff_id }}">Staff: {{ st.name }}</option>
-                    {% endfor %}
-                </select>
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="2" required></textarea>
             </div>
+            <div class="form-group">
+                <label class="check-label">
+                    <input type="checkbox" name="notify" value="on" checked>
+                    Send a notification to the violator
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="notify_message">Notification message (optional; defaults to a standard violation message)</label>
+                <textarea id="notify_message" name="notify_message" rows="2" placeholder="e.g. Please be careful with the mess rules from now on."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Record Violation</button>
+        </form>
+    </div>
+
+    <div id="tab-notice" class="tab-panel">
+        <form method="post">
+            <input type="hidden" name="action" value="notice">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="recipient_type">Recipient is</label>
+                    <select id="recipient_type" name="recipient_type">
+                        <option value="student">Student</option>
+                        <option value="staff">Staff</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="recipient_id">Recipient</label>
+                    <select id="recipient_id" name="recipient_id" required>
+                        {% for s in students %}
+                        <option value="{{ s.student_id }}" data-type="student">Student: {{ s.name }}</option>
+                        {% endfor %}
+                        {% for st in staff_members %}
+                        <option value="{{ st.staff_id }}" data-type="staff">Staff: {{ st.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="message">Notice</label>
+                <textarea id="message" name="message" rows="2" required placeholder="e.g. Room inspection this Friday at 10 AM."></textarea>
+            </div>
+            <button type="submit" class="btn btn-success">Send Notice</button>
+        </form>
+    </div>
+
+    <div id="tab-list" class="tab-panel">
+        <div class="chips">
+            <button type="button" class="chip active" data-filter="all">All ({{ violations|length }})</button>
+            <button type="button" class="chip" data-filter="Open">Open ({{ violations|selectattr('status', 'equalto', 'Open')|list|length }})</button>
+            <button type="button" class="chip" data-filter="Resolved">Resolved ({{ violations|selectattr('status', 'equalto', 'Resolved')|list|length }})</button>
         </div>
-        <div class="form-group">
-            <label for="description">Description</label>
-            <textarea id="description" name="description" rows="2" required></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary">Record Violation</button>
-    </form>
+        <table>
+            <thead><tr><th>ID</th><th>Person</th><th>Type</th><th>Description</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for v in violations %}
+                <tr data-status="{{ v.status }}">
+                    <td>{{ v.violation_id }}</td>
+                    <td>{{ v.student_name or v.staff_name }}</td>
+                    <td>{{ 'Student' if v.student_id else 'Staff' }}</td>
+                    <td>{{ v.description }}</td>
+                    <td>{{ v.date }}</td>
+                    <td>
+                        {% if v.status == 'Open' %}<span class="badge badge-red">Open</span>
+                        {% else %}<span class="badge badge-green">Resolved</span>{% endif %}
+                    </td>
+                    <td class="actions-cell">
+                        <button type="button" class="btn btn-ghost btn-sm row-notify-btn">Notify</button>
+                        <div class="row-notify" hidden>
+                            <form method="post">
+                                <input type="hidden" name="action" value="row_notify">
+                                <input type="hidden" name="violation_id" value="{{ v.violation_id }}">
+                                <textarea name="message" rows="1" placeholder="e.g. Please come see me in the office." required></textarea>
+                                <button type="submit" class="btn btn-primary btn-sm">Send</button>
+                            </form>
+                        </div>
+                        {% if v.status == 'Open' %}
+                        <form method="post" action="{{ url_for('resolve_violation', violation_id=v.violation_id) }}">
+                            <button type="submit" class="btn btn-success btn-sm">Resolve</button>
+                        </form>
+                        {% else %}<span class="muted">{{ v.resolved_at or '-' }}</span>{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="empty">No violations recorded.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<div class="section">
-    <h2>All Violations</h2>
-    <table>
-        <thead><tr><th>ID</th><th>Person</th><th>Type</th><th>Description</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
-        <tbody>
-            {% for v in violations %}
-            <tr>
-                <td>{{ v.violation_id }}</td>
-                <td>{{ v.student_name or v.staff_name }}</td>
-                <td>{{ 'Student' if v.student_id else 'Staff' }}</td>
-                <td>{{ v.description }}</td>
-                <td>{{ v.date }}</td>
-                <td>
-                    {% if v.status == 'Open' %}<span class="badge badge-red">Open</span>
-                    {% else %}<span class="badge badge-green">Resolved</span>{% endif %}
-                </td>
-                <td>
-                    {% if v.status == 'Open' %}
-                    <form method="post" action="{{ url_for('resolve_violation', violation_id=v.violation_id) }}">
-                        <button type="submit" class="btn btn-success btn-sm">Resolve</button>
-                    </form>
-                    {% else %}<span class="muted">{{ v.resolved_at or '-' }}</span>{% endif %}
-                </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="7" class="empty">No violations recorded.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<script>
+(function () {
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+            document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+            btn.classList.add('active');
+            var panel = document.getElementById(btn.dataset.tab);
+            if (panel) panel.classList.add('active');
+        });
+    });
+
+    function wireTypeFilter(typeSelectId, personSelectId) {
+        var type = document.getElementById(typeSelectId);
+        var person = document.getElementById(personSelectId);
+        if (!type || !person) return;
+        function filter() {
+            var t = type.value;
+            var visible = [];
+            Array.prototype.forEach.call(person.options, function (opt) {
+                var match = opt.dataset.type === t;
+                opt.hidden = !match;
+                if (match) visible.push(opt);
+            });
+            if (visible.length) visible[0].selected = true;
+        }
+        type.addEventListener('change', filter);
+        filter();
+    }
+    wireTypeFilter('target', 'target_id');
+    wireTypeFilter('recipient_type', 'recipient_id');
+
+    document.querySelectorAll('.chip[data-filter]').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            var f = chip.dataset.filter;
+            document.querySelectorAll('.chip[data-filter]').forEach(function (c) { c.classList.remove('active'); });
+            chip.classList.add('active');
+            document.querySelectorAll('tr[data-status]').forEach(function (tr) {
+                tr.style.display = (f === 'all' || tr.dataset.status === f) ? '' : 'none';
+            });
+        });
+    });
+
+    document.querySelectorAll('.row-notify-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var box = btn.parentElement.querySelector('.row-notify');
+            if (box) box.hidden = !box.hidden;
+        });
+    });
+})();
+</script>
 {% endblock %}
