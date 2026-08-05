@@ -65,7 +65,7 @@
     <h2>Invoices by Student</h2>
     <table>
         <thead>
-            <tr><th></th><th>ID</th><th>Student</th><th>Bills</th><th>Count</th><th>Total</th></tr>
+            <tr><th></th><th>ID</th><th>Student</th><th>Bills</th><th>Count</th><th>Total</th><th></th></tr>
         </thead>
         <tbody>
             {% for g in student_summary %}
@@ -76,9 +76,12 @@
                 <td>{{ g.types }}</td>
                 <td>{{ g.count }}</td>
                 <td>${{ '%.2f'|format(g.total) }}</td>
+                <td class="actions-cell">
+                    <a class="btn btn-primary btn-sm" href="{{ url_for('manager_invoice_statement_print', student_id=g.student_id) }}" target="_blank">Print statement</a>
+                </td>
             </tr>
             <tr class="invoice-detail" data-group="{{ g.student_id }}" hidden>
-                <td colspan="6">
+                <td colspan="7">
                     <table class="inner-table">
                         <thead>
                             <tr><th>ID</th><th>Type</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Action</th></tr>
@@ -102,7 +105,6 @@
                                         </button>
                                     </form>
                                     <a class="btn btn-ghost btn-sm" href="{{ url_for('manager_invoice_print', invoice_id=i.invoice_id) }}" target="_blank">Print</a>
-                                    <a class="btn btn-primary btn-sm" href="{{ url_for('manager_invoice_pdf', invoice_id=i.invoice_id) }}">Download PDF</a>
                                 </td>
                             </tr>
                             {% endfor %}

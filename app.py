@@ -1,10 +1,9 @@
 from datetime import date, datetime
 from functools import wraps
-from io import BytesIO
 from math import asin, cos, radians, sin, sqrt
 
 from flask import (
-    Flask, flash, redirect, render_template, request, send_file, session, url_for,
+    Flask, flash, redirect, render_template, request, session, url_for,
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -608,41 +607,30 @@ def _invoice_receipt_data(invoice_id):
     )
 
 
-def _invoice_pdf_bytes(invoice):
-    from fpdf import FPDF
-
-    pdf = FPDF(format='A4')
-    pdf.add_page()
-    pdf.set_font('Helvetica', 'B', 16)
-    pdf.cell(0, 10, 'HostelMS - Monthly Invoice', ln=1, align='C')
-    pdf.set_font('Helvetica', '', 10)
-    pdf.cell(0, 6, invoice['hostel_name'] or 'Hostel', ln=1, align='C')
-    pdf.ln(6)
-
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.cell(0, 8, f"Invoice No: INV-{invoice['invoice_id']}", ln=1)
-    pdf.set_font('Helvetica', '', 10)
-    pdf.cell(0, 6, f"Student: {invoice['student_name']}", ln=1)
-    pdf.cell(0, 6, f"Room: {invoice['room_no'] or 'Not allocated'}", ln=1)
-    pdf.cell(0, 6, f"Due date: {invoice['due_date']}", ln=1)
-    pdf.cell(0, 6, f"Status: {invoice['payment_status']}", ln=1)
-    pdf.ln(4)
-
-    pdf.set_font('Helvetica', 'B', 10)
-    pdf.cell(95, 8, 'Description', border=1)
-    pdf.cell(95, 8, f"Amount: ${invoice['amount']:,.2f}", border=1, align='R')
-    pdf.ln()
-    pdf.set_font('Helvetica', '', 10)
-    pdf.cell(95, 8, invoice['invoice_type'], border=1)
-    pdf.cell(95, 8, '', border=1)
-    pdf.ln()
-    pdf.set_font('Helvetica', 'B', 10)
-    pdf.cell(95, 8, 'Total', border=1)
-    pdf.cell(95, 8, f"${invoice['amount']:,.2f}", border=1, align='R')
-    pdf.ln(12)
-    pdf.set_font('Helvetica', 'I', 9)
-    pdf.cell(0, 6, 'Please pay before the due date. Thank you.', ln=1, align='C')
-    return bytes(pdf.output(dest='S'))
+def _student_invoice_statement(student_id):
+    student = query(
+        'SELECT s.student_id, s.name AS student_name, r.room_no, h.hostel_name, h.location '
+        'FROM students s '
+        'LEFT JOIN rooms r ON s.room_id = r.room_id '
+        'LEFT JOIN hostels h ON r.hostel_id = h.hostel_id '
+        'WHERE s.student_id = %s',
+        (student_id,), one=True,
+    )
+    if not student:
+        return None, None, None
+    invoices = query(
+        'SELECT * FROM invoices WHERE student_id = %s ORDER BY invoice_id',
+        (student_id,),
+    )
+    totals = query(
+        'SELECT COUNT(*) AS count, '
+        'COALESCE(SUM(amount), 0) AS total, '
+        'COALESCE(SUM(CASE WHEN payment_status = "Paid" THEN amount ELSE 0 END), 0) AS paid, '
+        'COALESCE(SUM(CASE WHEN payment_status <> "Paid" THEN amount ELSE 0 END), 0) AS unpaid '
+        'FROM invoices WHERE student_id = %s',
+        (student_id,), one=True,
+    )
+    return student, invoices, totals
 
 
 @app.route('/manager/invoices', methods=['GET', 'POST'])
@@ -734,22 +722,17 @@ def manager_invoice_print(invoice_id):
     return render_template('invoice_print.html', invoice=invoice)
 
 
-@app.route('/manager/invoices/pdf/<int:invoice_id>')
+@app.route('/manager/invoices/print-student/<int:student_id>')
 @login_required
 @role_required('manager')
-def manager_invoice_pdf(invoice_id):
-    invoice = _invoice_receipt_data(invoice_id)
-    if not invoice:
-        flash('Invoice not found.', 'danger')
+def manager_invoice_statement_print(student_id):
+    student, invoices, totals = _student_invoice_statement(student_id)
+    if not student:
+        flash('Student not found.', 'danger')
         return redirect(url_for('manager_invoices'))
-    try:
-        data = _invoice_pdf_bytes(invoice)
-    except ImportError:
-        flash('PDF support is not installed (pip install fpdf2). Use Print instead.', 'warning')
-        return redirect(url_for('manager_invoice_print', invoice_id=invoice_id))
-    return send_file(
-        BytesIO(data), mimetype='application/pdf',
-        download_name=f'invoice-{invoice_id}.pdf', as_attachment=True,
+    return render_template(
+        'invoice_statement_print.html', student=student, invoices=invoices, totals=totals,
+        today=date.today(),
     )
 
 
@@ -1194,25 +1177,6 @@ def student_invoice_print(invoice_id):
         flash('Invoice not found.', 'danger')
         return redirect(url_for('student_invoices'))
     return render_template('invoice_print.html', invoice=invoice)
-
-
-@app.route('/student/invoices/pdf/<int:invoice_id>')
-@login_required
-@role_required('student')
-def student_invoice_pdf(invoice_id):
-    invoice = _invoice_receipt_data(invoice_id)
-    if not invoice or invoice['student_id'] != session['role_id']:
-        flash('Invoice not found.', 'danger')
-        return redirect(url_for('student_invoices'))
-    try:
-        data = _invoice_pdf_bytes(invoice)
-    except ImportError:
-        flash('PDF support is not installed (pip install fpdf2). Use Print instead.', 'warning')
-        return redirect(url_for('student_invoice_print', invoice_id=invoice_id))
-    return send_file(
-        BytesIO(data), mimetype='application/pdf',
-        download_name=f'invoice-{invoice_id}.pdf', as_attachment=True,
-    )
 
 
 @app.route('/student/mess-off', methods=['GET', 'POST'])

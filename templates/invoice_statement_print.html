@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Invoice Statement - {{ student.student_name }}</title>
+<style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, Arial, sans-serif; color: #222; margin: 0; background: #f6f7f9; }
+    .sheet { max-width: 720px; margin: 24px auto; background: #fff; padding: 40px; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+    .brand { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1d6fb8; padding-bottom: 14px; }
+    .brand h1 { margin: 0; font-size: 22px; color: #1d6fb8; }
+    .brand p { margin: 2px 0 0; color: #666; font-size: 13px; }
+    .right { text-align: right; font-size: 13px; color: #555; }
+    .meta { display: flex; gap: 40px; margin: 22px 0; }
+    .meta h3 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; color: #888; }
+    .meta p { margin: 2px 0; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; font-size: 14px; }
+    th { background: #f0f4f8; }
+    .num { text-align: right; }
+    .total-row td { font-weight: 700; background: #f0f4f8; }
+    .status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .s-paid { background: #e6f6ea; color: #1e7e34; }
+    .s-unpaid { background: #fef7e0; color: #9a6b00; }
+    .s-overdue { background: #fdecec; color: #c0392b; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 18px; }
+    .summary-card { border: 1px solid #e3e7ec; border-radius: 8px; padding: 12px; text-align: center; }
+    .summary-card span { display: block; }
+    .summary-label { font-size: 11px; text-transform: uppercase; color: #888; }
+    .summary-value { font-size: 18px; font-weight: 700; margin-top: 4px; }
+    .footer { margin-top: 30px; font-size: 12px; color: #888; text-align: center; }
+    .toolbar { max-width: 720px; margin: 0 auto 12px; text-align: right; }
+    .toolbar button { padding: 8px 16px; border: none; border-radius: 6px; background: #1d6fb8; color: #fff; cursor: pointer; font-size: 13px; }
+    @media print {
+        body { background: #fff; }
+        .sheet { margin: 0; box-shadow: none; border-radius: 0; padding: 20px; }
+        .toolbar { display: none; }
+    }
+</style>
+</head>
+<body>
+<div class="toolbar"><button onclick="window.print()">Print / Save as PDF</button></div>
+<div class="sheet">
+    <div class="brand">
+        <div>
+            <h1>HostelMS</h1>
+            <p>{{ student.hostel_name or 'Hostel Management System' }}</p>
+            {% if student.location %}<p>{{ student.location }}</p>{% endif %}
+        </div>
+        <div class="right">
+            <strong>INVOICE STATEMENT</strong><br>
+            Issued: {{ today }}
+        </div>
+    </div>
+
+    <div class="meta">
+        <div>
+            <h3>Billed To</h3>
+            <p><strong>{{ student.student_name }}</strong></p>
+            <p>Student ID: {{ student.student_id }}</p>
+            <p>Room: {{ student.room_no or 'Not allocated' }}</p>
+        </div>
+        <div>
+            <h3>Statement Summary</h3>
+            <p>Total invoices: {{ totals.count }}</p>
+            <p>Total value: ${{ '%.2f'|format(totals.total) }}</p>
+            <p>Paid: ${{ '%.2f'|format(totals.paid) }} / Unpaid: ${{ '%.2f'|format(totals.unpaid) }}</p>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr><th>No</th><th>Type</th><th>Due Date</th><th>Status</th><th class="num">Amount</th></tr>
+        </thead>
+        <tbody>
+            {% for i in invoices %}
+            <tr>
+                <td>INV-{{ i.invoice_id }}</td>
+                <td>{{ i.invoice_type }}</td>
+                <td>{{ i.due_date }}</td>
+                <td><span class="status s-{{ i.payment_status|lower }}">{{ i.payment_status }}</span></td>
+                <td class="num">${{ '%.2f'|format(i.amount) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="4">Total</td>
+                <td class="num">${{ '%.2f'|format(totals.total) }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="summary-grid">
+        <div class="summary-card"><span class="summary-label">Total Invoices</span><span class="summary-value">{{ totals.count }}</span></div>
+        <div class="summary-card"><span class="summary-label">Total Value</span><span class="summary-value">${{ '%.2f'|format(totals.total) }}</span></div>
+        <div class="summary-card"><span class="summary-label">Paid</span><span class="summary-value">${{ '%.2f'|format(totals.paid) }}</span></div>
+        <div class="summary-card"><span class="summary-label">Unpaid / Overdue</span><span class="summary-value">${{ '%.2f'|format(totals.unpaid) }}</span></div>
+    </div>
+
+    <div class="footer">Please pay before the due date. Thank you.</div>
+</div>
+</body>
+</html>

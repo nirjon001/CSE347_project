@@ -47,7 +47,6 @@
             </td>
             <td class="actions-cell">
                 <a class="btn btn-ghost btn-sm" href="{{ url_for('student_invoice_print', invoice_id=i.invoice_id) }}" target="_blank">View / Print</a>
-                <a class="btn btn-primary btn-sm" href="{{ url_for('student_invoice_pdf', invoice_id=i.invoice_id) }}">PDF</a>
             </td>
         </tr>
         {% else %}
