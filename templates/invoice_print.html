@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Invoice INV-{{ invoice.invoice_id }}</title>
+<style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, Arial, sans-serif; color: #222; margin: 0; background: #f6f7f9; }
+    .sheet { max-width: 720px; margin: 24px auto; background: #fff; padding: 40px; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+    .brand { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1d6fb8; padding-bottom: 14px; }
+    .brand h1 { margin: 0; font-size: 22px; color: #1d6fb8; }
+    .brand p { margin: 2px 0 0; color: #666; font-size: 13px; }
+    .right { text-align: right; font-size: 13px; color: #555; }
+    .meta { display: flex; gap: 40px; margin: 22px 0; }
+    .meta h3 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; color: #888; }
+    .meta p { margin: 2px 0; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; font-size: 14px; }
+    th { background: #f0f4f8; }
+    .num { text-align: right; }
+    .total-row td { font-weight: 700; background: #f0f4f8; }
+    .status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .s-paid { background: #e6f6ea; color: #1e7e34; }
+    .s-unpaid { background: #fef7e0; color: #9a6b00; }
+    .s-overdue { background: #fdecec; color: #c0392b; }
+    .footer { margin-top: 30px; font-size: 12px; color: #888; text-align: center; }
+    .toolbar { max-width: 720px; margin: 0 auto 12px; text-align: right; }
+    .toolbar button { padding: 8px 16px; border: none; border-radius: 6px; background: #1d6fb8; color: #fff; cursor: pointer; font-size: 13px; }
+    @media print {
+        body { background: #fff; }
+        .sheet { margin: 0; box-shadow: none; border-radius: 0; padding: 20px; }
+        .toolbar { display: none; }
+    }
+</style>
+</head>
+<body>
+<div class="toolbar"><button onclick="window.print()">Print / Save as PDF</button></div>
+<div class="sheet">
+    <div class="brand">
+        <div>
+            <h1>HostelMS</h1>
+            <p>{{ invoice.hostel_name or 'Hostel Management System' }}</p>
+            {% if invoice.location %}<p>{{ invoice.location }}</p>{% endif %}
+        </div>
+        <div class="right">
+            <strong>INVOICE</strong><br>
+            No: INV-{{ invoice.invoice_id }}<br>
+            Issued: {{ invoice.due_date }}
+        </div>
+    </div>
+
+    <div class="meta">
+        <div>
+            <h3>Billed To</h3>
+            <p><strong>{{ invoice.student_name }}</strong></p>
+            <p>Student ID: {{ invoice.student_id }}</p>
+            <p>Room: {{ invoice.room_no or 'Not allocated' }}</p>
+        </div>
+        <div>
+            <h3>Invoice Details</h3>
+            <p>Type: {{ invoice.invoice_type }}</p>
+            <p>Due date: {{ invoice.due_date }}</p>
+            <p>Status: <span class="status s-{{ invoice.payment_status|lower }}">{{ invoice.payment_status }}</span></p>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr><th>Description</th><th class="num">Amount</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>{{ invoice.invoice_type }}</td><td class="num">${{ '%.2f'|format(invoice.amount) }}</td></tr>
+            <tr class="total-row"><td>Total</td><td class="num">${{ '%.2f'|format(invoice.amount) }}</td></tr>
+        </tbody>
+    </table>
+
+    <div class="footer">Please pay before the due date. Thank you.</div>
+</div>
+</body>
+</html>

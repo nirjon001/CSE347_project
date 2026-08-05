@@ -7,24 +7,51 @@
         <p>Your hostel fee invoices.</p>
     </div>
 </div>
+
+{% if total and total.count %}
+<div class="summary-grid">
+    <div class="summary-card">
+        <span class="summary-label">Total Invoices</span>
+        <span class="summary-value">{{ total.count }}</span>
+    </div>
+    <div class="summary-card">
+        <span class="summary-label">Total Amount</span>
+        <span class="summary-value">${{ '%.2f'|format(total.total) }}</span>
+    </div>
+    <div class="summary-card">
+        <span class="summary-label">Paid</span>
+        <span class="summary-value">${{ '%.2f'|format(total.paid) }}</span>
+    </div>
+    <div class="summary-card">
+        <span class="summary-label">Unpaid / Overdue</span>
+        <span class="summary-value">${{ '%.2f'|format(total.unpaid) }}</span>
+    </div>
+</div>
+{% endif %}
+
 <table>
     <thead>
-        <tr><th>ID</th><th>Amount</th><th>Due Date</th><th>Status</th></tr>
+        <tr><th>ID</th><th>Type</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Details</th></tr>
     </thead>
     <tbody>
         {% for i in invoices %}
         <tr>
             <td>{{ i.invoice_id }}</td>
-            <td>{{ i.amount }}</td>
+            <td>{{ i.invoice_type }}</td>
+            <td>${{ i.amount }}</td>
             <td>{{ i.due_date }}</td>
             <td>
                 {% if i.payment_status == 'Paid' %}<span class="badge badge-green">Paid</span>
                 {% elif i.payment_status == 'Unpaid' %}<span class="badge badge-yellow">Unpaid</span>
                 {% else %}<span class="badge badge-red">Overdue</span>{% endif %}
             </td>
+            <td class="actions-cell">
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('student_invoice_print', invoice_id=i.invoice_id) }}" target="_blank">View / Print</a>
+                <a class="btn btn-primary btn-sm" href="{{ url_for('student_invoice_pdf', invoice_id=i.invoice_id) }}">PDF</a>
+            </td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="empty">No invoices yet.</td></tr>
+        <tr><td colspan="6" class="empty">No invoices yet.</td></tr>
         {% endfor %}
     </tbody>
 </table>

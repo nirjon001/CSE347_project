@@ -69,13 +69,13 @@ INSERT INTO mess_menu (menu_id, manager_id, day_of_week, meal_type, items_descri
 (6,  1, 'Sunday',   'Dinner',    'Rice, Vegetable Curry, Egg');
 
 -- INVOICES (mix of statuses)
-INSERT INTO invoices (invoice_id, student_id, amount, due_date, payment_status) VALUES
-(1, 1, 4500.00, '2026-09-01', 'Unpaid'),
-(2, 2, 4500.00, '2026-09-01', 'Paid'),
-(3, 3, 4800.00, '2026-09-05', 'Unpaid'),
-(4, 4, 4200.00, '2026-08-15', 'Overdue'),
-(5, 1, 5000.00, '2026-07-01', 'Paid'),
-(6, 5, 4500.00, '2026-09-01', 'Unpaid');
+INSERT INTO invoices (invoice_id, student_id, invoice_type, amount, due_date, payment_status) VALUES
+(1, 1, 'Room Rent',      4500.00, '2026-09-01', 'Unpaid'),
+(2, 2, 'Room Rent',      4500.00, '2026-09-01', 'Paid'),
+(3, 3, 'Room Rent',      4800.00, '2026-09-05', 'Unpaid'),
+(4, 4, 'Electricity',     820.00, '2026-08-15', 'Overdue'),
+(5, 1, 'Food',           1500.00, '2026-07-01', 'Paid'),
+(6, 5, 'Room Rent',      4500.00, '2026-09-01', 'Unpaid');
 
 -- COMPLAINTS
 INSERT INTO complaints (complaint_id, student_id, room_id, description, status, date) VALUES

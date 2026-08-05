@@ -159,15 +159,17 @@ Automatic triggers: complaint status change → student; new invoice → student
 | `/manager/students` | `viewStudents` | Lists all students joined with their username and room |
 | `/manager/students/register` | `registerStudent()` | Creates a `users` row (role=student, hashed password) then a `students` row — two inserts in a transaction-like sequence |
 | `/manager/students/delete/<id>` | `deleteStudent(id)` | Deletes the user (ON DELETE CASCADE removes the student row), and if they had a room, **returns the bed** by incrementing `available_beds` (see trigger note in §6) |
-| `/manager/rooms` | `viewRooms()` | Shows each hostel (with its gender), each room, bed counts and current occupants |
+| `/manager/rooms` | `viewRooms()` | Shows each hostel (with its gender), each room, bed counts and current occupants — the **Occupants column now lists the actual student names** inside each room (not just a count) |
 | `/manager/hostels/add` | — | Add a **new hostel** (name + location + **gender** + lat/lng/radius for the attendance geo-fence). A Leaflet map offers **both options**: drop/pin the location on the map (click/drag/"Locate me", with optional free OpenStreetMap reverse-geocoding that auto-fills the address) or type the coordinates manually; `total_rooms` starts at 0. Saving is rejected with a friendly flash if **another hostel already uses the same address** (`_hostel_same_address()`), so two buildings can't share one location |
 | `/manager/hostels/edit/<id>` | `editHostel()` | Edit every field from the add form (name, location, gender, coords, radius) with the same map. Changing the **gender is blocked** while students are allocated to that hostel. The duplicate-address check also applies but **excludes the hostel being edited**, so keeping your own address still saves |
 | `/manager/hostels/delete/<id>` | `deleteHostel()` | Delete a hostel (rooms cascade). **Blocked** while any student is still allocated; the hostel list page shows the Edit/Delete buttons |
 | `/manager/rooms/add` | — | Add a room with a **custom bed capacity** (any number ≥ 1) to any hostel; rejects duplicates and zero capacity |
 | `/manager/rooms/allocate` | `allocateRoom()` | The Room Allocation sequence diagram #3. Uses `SELECT ... FOR UPDATE` to lock the room row, refuses allocation if `available_beds <= 0` **or if the student's gender doesn't match the hostel's gender**, else decrements beds and sets the student's `room_id`. The DB trigger below is the backstop |
 | `/manager/complaints` | `viewComplaint` / `resolveComplaint` | Lists complaints with student+room; a form updates status to Pending/In Progress/Resolved — **and notifies the student** of the new status |
-| `/manager/invoices` | `generateInvoice()` | Creates a new invoice for a student with amount + due date — **and notifies the student** |
+| `/manager/invoices` | `generateInvoice()` | Creates a new invoice for a student with an **invoice type** (Room Rent / Electricity / Food / Water / Other) + amount + due date — **and notifies the student**. The page shows a **Summary by Type** section (count + sum per type, grand total) over all invoices, plus **Print** and **Download PDF** buttons per row |
 | `/manager/invoices/toggle/<id>` | `updatePaymentStatus()` | Flips an invoice between Paid/Unpaid |
+| `/manager/invoices/print/<id>` | — | Opens a printable receipt (hostel name, invoice no, student, type, amount, due date, status) — press **Print / Save as PDF** |
+| `/manager/invoices/pdf/<id>` | — | Downloads the same receipt as a **PDF file** (generated with `fpdf2`; falls back to Print with a message if the library isn't installed) |
 | `/manager/attendance` | `recordStudentAttendance()` `recordStaffAttendance()` | Records attendance; `ON DUPLICATE KEY UPDATE` lets you overwrite the same (student, date) instead of erroring |
 | `/manager/mess-menu` | `updateMessMenu()` | Upserts a menu item per (day, meal) slot |
 | `/manager/violations` | `recordViolation()` / `resolveViolation()` | The page is organised into **three tabs**: **Record Violation** (student or staff target, description, optional notify checkbox + custom message), **Send Notice** (free-text manual notice to any student or staff member), and **All Violations** (open/resolved filter chips + per-row **Notify** expand and **Resolve** for open rows). The POST handler dispatches on a hidden `action` field — `record`, `notice`, or `row_notify` — which keeps every workflow on this single URL |
@@ -188,7 +190,9 @@ Automatic triggers: complaint status change → student; new invoice → student
 | `/student/profile` | `viewProfile()` | View and edit own email/phone/address/gender |
 | `/student/room` | `viewRoom()` | Shows own room + hostel details (or a "not allocated" notice) |
 | `/student/complaints` | `submitComplaint()` | Submit a complaint; list own complaints with status badges |
-| `/student/invoices` | `viewInvoice()` | List own invoices and payment status |
+| `/student/invoices` | `viewInvoice()` | List own invoices with type and payment status, plus **total / paid / unpaid summary cards**; each row has a **View/Print** and **PDF** button (student routes only allow access to their own invoices) |
+| `/student/invoices/print/<id>` | — | Printable receipt for the student's own invoice (Ctrl+P → physical copy) |
+| `/student/invoices/pdf/<id>` | — | PDF download of the student's own invoice |
 | `/student/mess-off` | `applyMessOff()` | Request mess-off with start/end date (status Pending) |
 | `/student/feedback` | `submitFeedback()` | Submit and view own feedback |
 | `/student/in-out` | `submitLeaveRequest()` | Record a departure (out_date, reason); status starts as Out |
@@ -300,6 +304,7 @@ Inserts demo records (9 users, 1 manager, 3 staff, 2 hostels — Main Hostel (Ma
 5. **Data ownership** — notification reads/queries always filter by `session['user_id']`, so one user can never see or mark-read another's notifications; parcel collection only works for the parcel's own student.
 6. **Geo-fenced attendance** — the location check (haversine vs the hostel's `lat`/`lng`/`radius_m`) happens on the **server** with coordinates the browser sends; the Leaflet map is only a visual aid. The browser requests a fresh fix (`enableHighAccuracy`, `maximumAge: 0`) and the UI shows the **reported ±accuracy** — important because desktop browsers fall back to IP/WiFi triangulation (no GPS), which can be off by hundreds of metres. Note: browsers require HTTPS (or `localhost`) for the Geolocation API in production.
 7. **Save hardening on hostel forms** — `location`/`hostel_name` are truncated to the column widths in `_hostel_form()`, the insert/update is wrapped in `try/except mysql.connector.Error` (the error is flashed instead of crashing), and a global `@app.errorhandler(500)` returns a friendly page — so a bad value (e.g., a very long reverse-geocoded address) can never drop the dev server's connection. This matters because `db.py` forces `STRICT_TRANS_TABLES`, so an over-length `VARCHAR` would otherwise raise an unhandled error 1406.
+8. **Invoice print/PDF ownership** — the student print/PDF routes (`/student/invoices/print/<id>`, `/student/invoices/pdf/<id>`) verify the invoice belongs to the logged-in student before rendering or downloading; manager routes are role-guarded. The PDF generator is wrapped in `try/except ImportError`, so the app never crashes if `fpdf2` is missing — it falls back to the printable page with a message.
 
 ---
 

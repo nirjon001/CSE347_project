@@ -544,8 +544,22 @@ body.has-sidebar .footer { margin-left: 250px; }
 .chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 /* ---------- Inline row notify ---------- */
-.actions-cell { white-space: nowrap; }
-.row-notify { margin: 6px 0; }
+.actions-cell { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.actions-cell form { display: inline-flex; margin: 0; }
+.row-notify { margin: 6px 0; flex-basis: 100%; }
 .row-notify form { display: flex; gap: 6px; align-items: flex-start; }
 .row-notify textarea { flex: 1; min-width: 180px; }
+
+/* ---------- Summary cards ---------- */
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 12px; }
+.summary-card { background: #fff; border: 1px solid #e2e6ea; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.summary-label { font-size: 12px; text-transform: uppercase; color: #777; letter-spacing: .4px; }
+.summary-value { font-size: 20px; font-weight: 700; color: #333; }
+.summary-sub { font-size: 12px; color: #888; }
+.summary-total { background: var(--primary); border-color: var(--primary); }
+.summary-total .summary-label, .summary-total .summary-sub { color: #dce9f5; }
+.summary-total .summary-value { color: #fff; }
+
+/* ---------- Room occupants ---------- */
+.room-occupants { font-size: 12px; color: #666; max-width: 260px; }
 

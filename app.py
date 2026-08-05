@@ -1,9 +1,10 @@
 from datetime import date, datetime
 from functools import wraps
+from io import BytesIO
 from math import asin, cos, radians, sin, sqrt
 
 from flask import (
-    Flask, flash, redirect, render_template, request, session, url_for,
+    Flask, flash, redirect, render_template, request, send_file, session, url_for,
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -330,7 +331,9 @@ def delete_student(student_id):
 def manager_rooms():
     rooms = query(
         'SELECT r.room_id, r.room_no, r.total_beds, r.available_beds, h.hostel_name, h.gender, '
-        '(SELECT COUNT(*) FROM students s WHERE s.room_id = r.room_id) AS occupants '
+        '(SELECT COUNT(*) FROM students s WHERE s.room_id = r.room_id) AS occupants, '
+        '(SELECT GROUP_CONCAT(s.name ORDER BY s.name SEPARATOR ", ") FROM students s '
+        ' WHERE s.room_id = r.room_id) AS occupant_names '
         'FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id ORDER BY r.room_id'
     )
     hostels = query(
@@ -580,6 +583,58 @@ def manager_complaints():
     return render_template('manager/complaints.html', complaints=complaints)
 
 
+INVOICE_TYPES = ('Room Rent', 'Electricity', 'Food', 'Water', 'Other')
+
+
+def _invoice_receipt_data(invoice_id):
+    return query(
+        'SELECT i.*, s.name AS student_name, r.room_no, h.hostel_name, h.location '
+        'FROM invoices i '
+        'JOIN students s ON i.student_id = s.student_id '
+        'LEFT JOIN rooms r ON s.room_id = r.room_id '
+        'LEFT JOIN hostels h ON r.hostel_id = h.hostel_id '
+        'WHERE i.invoice_id = %s',
+        (invoice_id,), one=True,
+    )
+
+
+def _invoice_pdf_bytes(invoice):
+    from fpdf import FPDF
+
+    pdf = FPDF(format='A4')
+    pdf.add_page()
+    pdf.set_font('Helvetica', 'B', 16)
+    pdf.cell(0, 10, 'HostelMS - Monthly Invoice', ln=1, align='C')
+    pdf.set_font('Helvetica', '', 10)
+    pdf.cell(0, 6, invoice['hostel_name'] or 'Hostel', ln=1, align='C')
+    pdf.ln(6)
+
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.cell(0, 8, f"Invoice No: INV-{invoice['invoice_id']}", ln=1)
+    pdf.set_font('Helvetica', '', 10)
+    pdf.cell(0, 6, f"Student: {invoice['student_name']}", ln=1)
+    pdf.cell(0, 6, f"Room: {invoice['room_no'] or 'Not allocated'}", ln=1)
+    pdf.cell(0, 6, f"Due date: {invoice['due_date']}", ln=1)
+    pdf.cell(0, 6, f"Status: {invoice['payment_status']}", ln=1)
+    pdf.ln(4)
+
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.cell(95, 8, 'Description', border=1)
+    pdf.cell(95, 8, f"Amount: ${invoice['amount']:,.2f}", border=1, align='R')
+    pdf.ln()
+    pdf.set_font('Helvetica', '', 10)
+    pdf.cell(95, 8, invoice['invoice_type'], border=1)
+    pdf.cell(95, 8, '', border=1)
+    pdf.ln()
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.cell(95, 8, 'Total', border=1)
+    pdf.cell(95, 8, f"${invoice['amount']:,.2f}", border=1, align='R')
+    pdf.ln(12)
+    pdf.set_font('Helvetica', 'I', 9)
+    pdf.cell(0, 6, 'Please pay before the due date. Thank you.', ln=1, align='C')
+    return bytes(pdf.output(dest='S'))
+
+
 @app.route('/manager/invoices', methods=['GET', 'POST'])
 @login_required
 @role_required('manager')
@@ -588,14 +643,18 @@ def manager_invoices():
         student_id = request.form.get('student_id')
         amount = request.form.get('amount')
         due_date = request.form.get('due_date')
+        invoice_type = request.form.get('invoice_type', 'Room Rent')
+        if invoice_type not in INVOICE_TYPES:
+            invoice_type = 'Room Rent'
         execute(
-            'INSERT INTO invoices (student_id, amount, due_date, payment_status) VALUES (%s, %s, %s, %s)',
-            (student_id, amount, due_date, 'Unpaid'),
+            'INSERT INTO invoices (student_id, invoice_type, amount, due_date, payment_status) '
+            'VALUES (%s, %s, %s, %s, %s)',
+            (student_id, invoice_type, amount, due_date, 'Unpaid'),
         )
         notify_student(
             student_id,
             'New invoice',
-            f'A new invoice of ${amount} was issued. Due date: {due_date}.',
+            f'A new {invoice_type} invoice of ${amount} was issued. Due date: {due_date}.',
             '/student/invoices',
         )
         flash('Invoice generated.', 'success')
@@ -605,7 +664,15 @@ def manager_invoices():
         'JOIN students s ON i.student_id = s.student_id ORDER BY i.invoice_id DESC'
     )
     students = query('SELECT student_id, name FROM students ORDER BY student_id')
-    return render_template('manager/invoices.html', invoices=invoices, students=students)
+    summary = query(
+        'SELECT invoice_type, COUNT(*) AS count, SUM(amount) AS total '
+        'FROM invoices GROUP BY invoice_type ORDER BY invoice_type'
+    )
+    grand = query('SELECT COUNT(*) AS count, SUM(amount) AS total FROM invoices', one=True)
+    return render_template(
+        'manager/invoices.html', invoices=invoices, students=students,
+        summary=summary, grand=grand, invoice_types=INVOICE_TYPES,
+    )
 
 
 @app.route('/manager/invoices/toggle/<int:invoice_id>', methods=['POST'])
@@ -617,6 +684,36 @@ def toggle_invoice(invoice_id):
     execute('UPDATE invoices SET payment_status = %s WHERE invoice_id = %s', (new_status, invoice_id))
     flash(f'Invoice marked {new_status}.', 'success')
     return redirect(url_for('manager_invoices'))
+
+
+@app.route('/manager/invoices/print/<int:invoice_id>')
+@login_required
+@role_required('manager')
+def manager_invoice_print(invoice_id):
+    invoice = _invoice_receipt_data(invoice_id)
+    if not invoice:
+        flash('Invoice not found.', 'danger')
+        return redirect(url_for('manager_invoices'))
+    return render_template('invoice_print.html', invoice=invoice)
+
+
+@app.route('/manager/invoices/pdf/<int:invoice_id>')
+@login_required
+@role_required('manager')
+def manager_invoice_pdf(invoice_id):
+    invoice = _invoice_receipt_data(invoice_id)
+    if not invoice:
+        flash('Invoice not found.', 'danger')
+        return redirect(url_for('manager_invoices'))
+    try:
+        data = _invoice_pdf_bytes(invoice)
+    except ImportError:
+        flash('PDF support is not installed (pip install fpdf2). Use Print instead.', 'warning')
+        return redirect(url_for('manager_invoice_print', invoice_id=invoice_id))
+    return send_file(
+        BytesIO(data), mimetype='application/pdf',
+        download_name=f'invoice-{invoice_id}.pdf', as_attachment=True,
+    )
 
 
 @app.route('/manager/attendance', methods=['GET', 'POST'])
@@ -1041,7 +1138,44 @@ def student_invoices():
         'SELECT * FROM invoices WHERE student_id = %s ORDER BY invoice_id DESC',
         (session['role_id'],),
     )
-    return render_template('student/invoices.html', invoices=invoices)
+    total = query(
+        'SELECT COUNT(*) AS count, SUM(amount) AS total, '
+        'SUM(CASE WHEN payment_status = "Paid" THEN amount ELSE 0 END) AS paid, '
+        'SUM(CASE WHEN payment_status <> "Paid" THEN amount ELSE 0 END) AS unpaid '
+        'FROM invoices WHERE student_id = %s',
+        (session['role_id'],), one=True,
+    )
+    return render_template('student/invoices.html', invoices=invoices, total=total)
+
+
+@app.route('/student/invoices/print/<int:invoice_id>')
+@login_required
+@role_required('student')
+def student_invoice_print(invoice_id):
+    invoice = _invoice_receipt_data(invoice_id)
+    if not invoice or invoice['student_id'] != session['role_id']:
+        flash('Invoice not found.', 'danger')
+        return redirect(url_for('student_invoices'))
+    return render_template('invoice_print.html', invoice=invoice)
+
+
+@app.route('/student/invoices/pdf/<int:invoice_id>')
+@login_required
+@role_required('student')
+def student_invoice_pdf(invoice_id):
+    invoice = _invoice_receipt_data(invoice_id)
+    if not invoice or invoice['student_id'] != session['role_id']:
+        flash('Invoice not found.', 'danger')
+        return redirect(url_for('student_invoices'))
+    try:
+        data = _invoice_pdf_bytes(invoice)
+    except ImportError:
+        flash('PDF support is not installed (pip install fpdf2). Use Print instead.', 'warning')
+        return redirect(url_for('student_invoice_print', invoice_id=invoice_id))
+    return send_file(
+        BytesIO(data), mimetype='application/pdf',
+        download_name=f'invoice-{invoice_id}.pdf', as_attachment=True,
+    )
 
 
 @app.route('/student/mess-off', methods=['GET', 'POST'])

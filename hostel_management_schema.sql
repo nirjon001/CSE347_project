@@ -96,6 +96,7 @@ CREATE TABLE complaints (
 CREATE TABLE invoices (
     invoice_id      INT AUTO_INCREMENT PRIMARY KEY,
     student_id      INT NOT NULL,
+    invoice_type    ENUM('Room Rent', 'Electricity', 'Food', 'Water', 'Other') NOT NULL DEFAULT 'Room Rent',
     amount          DECIMAL(10,2) NOT NULL,
     due_date        DATE NOT NULL,
     payment_status  ENUM('Unpaid', 'Paid', 'Overdue') DEFAULT 'Unpaid',

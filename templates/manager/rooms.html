@@ -60,7 +60,12 @@
                 <td>{{ r.hostel_name }} <span class="muted">({{ r.gender }})</span></td>
                 <td>{{ r.total_beds }}</td>
                 <td>{{ r.available_beds }}</td>
-                <td>{{ r.occupants }}</td>
+                <td>
+                    {{ r.occupants }}
+                    {% if r.occupants > 0 and r.occupant_names %}
+                    <div class="muted room-occupants">{{ r.occupant_names }}</div>
+                    {% endif %}
+                </td>
                 <td>
                     {% if r.available_beds > 0 %}<span class="badge badge-green">Available</span>
                     {% else %}<span class="badge badge-red">Full</span>{% endif %}

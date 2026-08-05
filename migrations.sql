@@ -7,6 +7,7 @@
 --   * hostels: gender (boys/girls separation) + geofence coords
 --   * notifications table + bell-icon system
 --   * student-room gender guard trigger
+--   * invoices: invoice_type (room rent / electricity / food / water / other)
 --
 -- SAFE TO RUN ANY TIME / ANY NUMBER OF TIMES:
 --   * on the ORIGINAL schema  -> applies every step
@@ -218,3 +219,10 @@ BEGIN
     END IF;
 END//
 DELIMITER ;
+
+-- ---------------------------------------------------------------------
+-- 8) Invoices: invoice type (room rent / electricity / food / water / other)
+-- ---------------------------------------------------------------------
+ALTER TABLE invoices
+    ADD COLUMN IF NOT EXISTS invoice_type ENUM('Room Rent', 'Electricity', 'Food', 'Water', 'Other')
+        NOT NULL DEFAULT 'Room Rent' AFTER student_id;

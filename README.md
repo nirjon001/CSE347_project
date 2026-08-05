@@ -9,8 +9,8 @@ A web-based hostel management system built for **CSE347: Information System Anal
 - **Notification system** — a bell with an unread-count badge and a full notification page; students/staff get automatic alerts (complaint updates, new invoices, parcel arrivals, visitor arrivals, violation notices, mess-off decisions) and managers can send free-text notices
 - **Geo-fenced attendance** — students and staff mark "Present" only from inside their hostel's GPS radius (browser location + Leaflet/OpenStreetMap, no paid API keys). Managers set the hostel's location by dropping a pin on a map or typing coordinates, and the map shows your live position with an accuracy estimate (how close ± the fix is) and an inside/outside check
 - **Student parcel self-collection** — staff receive parcels (auto-notifying the student); students pick them up with one click, and every parcel keeps an audit trail (who received it, who collected it, when)
-- **Manager**: register/delete students, allocate rooms, add/edit/delete hostels (map pin or typed coordinates; duplicate addresses are rejected) & add rooms with custom bed capacity, manage complaints & invoices, record attendance, update the mess menu, record & resolve violations (tabbed page: record / send notice / browse all with Open-Resolved filters and per-row notify), view student feedback, approve/reject mess-off requests, view all parcels, view visitor logs, manage & delete staff
-- **Student**: view profile & room, submit complaints, view invoices, apply mess-off, give feedback, record in/out, check & collect parcels (who received them, when collected), mark attendance
+- **Manager**: register/delete students, allocate rooms, add/edit/delete hostels (map pin or typed coordinates; duplicate addresses are rejected) & add rooms with custom bed capacity, view each room's occupants, manage complaints & invoices (typed invoices — room rent / electricity / food / water / other — with a summary-by-type section and per-invoice **Print** / **Download PDF** physical copies), record attendance, update the mess menu, record & resolve violations (tabbed page: record / send notice / browse all with Open-Resolved filters and per-row notify), view student feedback, approve/reject mess-off requests, view all parcels, view visitor logs, manage & delete staff
+- **Student**: view profile & room, submit complaints, view invoices (total / paid / unpaid summary with View-Print and PDF for a physical copy), apply mess-off, give feedback, record in/out, check & collect parcels (who received them, when collected), mark attendance
 - **Staff**: register visitors at the front desk, receive parcels (notifies the student), record student returns, record own (geo-fenced) attendance
 - **Security**: scrypt password hashing, parameterized SQL (SQL-injection safe), role-guarded routes, strict SQL mode so invalid data is rejected
 
@@ -62,7 +62,7 @@ If the `mysql` command is on your PATH (it is *not* by default with XAMPP — us
 pip install -r requirements.txt
 ```
 
-This installs **Flask** and **mysql-connector-python**.
+This installs **Flask**, **mysql-connector-python**, and **fpdf2** (for PDF invoice downloads).
 
 ### 5. Check the database settings (only if your MySQL uses a password)
 
