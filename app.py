@@ -1,10 +1,13 @@
 from datetime import date, datetime
 from functools import wraps
+from math import asin, cos, radians, sin, sqrt
 
 from flask import (
     Flask, flash, redirect, render_template, request, session, url_for,
 )
 from werkzeug.security import check_password_hash, generate_password_hash
+
+import mysql.connector
 
 from config import SECRET_KEY
 from db import execute, get_connection, query
@@ -13,11 +16,33 @@ app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
 
+@app.errorhandler(500)
+def internal_error(e):
+    return (
+        '<!doctype html><html><head><meta charset="utf-8"><title>Something went wrong</title></head>'
+        '<body style="font-family:system-ui;background:#f6f7f9;display:flex;min-height:100vh;align-items:center;justify-content:center;">'
+        '<div style="max-width:420px;padding:24px;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.08);">'
+        '<h2 style="margin-top:0;color:#c0392b;">Something went wrong</h2>'
+        '<p style="color:#555;">The server hit an error while handling your request. Please go back and try again. '
+        'If it keeps happening, check the terminal where the server is running for details.</p>'
+        '<p><a href="/" style="color:#1d6fb8;">Back to home</a></p></div></body></html>',
+        500,
+    )
+
+
 @app.context_processor
 def inject_session_user():
+    unread = 0
+    if 'user_id' in session:
+        row = query(
+            'SELECT COUNT(*) AS c FROM notifications WHERE user_id = %s AND is_read = 0',
+            (session['user_id'],), one=True,
+        )
+        unread = row['c'] if row else 0
     return {
         'session_role': session.get('role'),
         'session_username': session.get('username'),
+        'unread_count': unread,
     }
 
 
@@ -53,6 +78,40 @@ def get_role_id(role, user_id):
     else:
         row = None
     return row[list(row)[0]] if row else None
+
+
+def notify_user(user_id, title, message, link=None):
+    execute(
+        'INSERT INTO notifications (user_id, title, message, link) VALUES (%s, %s, %s, %s)',
+        (user_id, title, message, link),
+    )
+
+
+def notify_managers(title, message, link=None):
+    rows = query('SELECT user_id FROM managers')
+    for row in rows:
+        notify_user(row['user_id'], title, message, link)
+
+
+def notify_student(student_id, title, message, link=None):
+    row = query('SELECT user_id FROM students WHERE student_id = %s', (student_id,), one=True)
+    if row:
+        notify_user(row['user_id'], title, message, link)
+
+
+def notify_staff(staff_id, title, message, link=None):
+    row = query('SELECT user_id FROM staff WHERE staff_id = %s', (staff_id,), one=True)
+    if row:
+        notify_user(row['user_id'], title, message, link)
+
+
+def distance_m(lat1, lng1, lat2, lng2):
+    radius = 6371000.0
+    phi1, phi2 = radians(lat1), radians(lat2)
+    dphi = radians(lat2 - lat1)
+    dlmb = radians(lng2 - lng1)
+    a = sin(dphi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(dlmb / 2) ** 2
+    return radius * 2 * asin(sqrt(a))
 
 
 @app.route('/')
@@ -121,6 +180,40 @@ def change_password():
             flash('Password changed successfully.', 'success')
             return redirect(url_for('dashboard'))
     return render_template('auth/change_password.html')
+
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    notifs = query(
+        'SELECT * FROM notifications WHERE user_id = %s '
+        'ORDER BY created_at DESC, notification_id DESC',
+        (session['user_id'],),
+    )
+    return render_template('notifications.html', notifications=notifs)
+
+
+@app.route('/notifications/read/<int:notification_id>', methods=['GET', 'POST'])
+@login_required
+def notification_read(notification_id):
+    execute(
+        'UPDATE notifications SET is_read = 1 '
+        'WHERE notification_id = %s AND user_id = %s',
+        (notification_id, session['user_id']),
+    )
+    notif = query(
+        'SELECT link FROM notifications WHERE notification_id = %s',
+        (notification_id,), one=True,
+    )
+    return redirect(notif['link'] if notif and notif['link'] else url_for('notifications'))
+
+
+@app.route('/notifications/read-all', methods=['POST'])
+@login_required
+def notifications_read_all():
+    execute('UPDATE notifications SET is_read = 1 WHERE user_id = %s', (session['user_id'],))
+    flash('All notifications marked as read.', 'success')
+    return redirect(url_for('notifications'))
 
 
 # =====================================================================
@@ -236,12 +329,63 @@ def delete_student(student_id):
 @role_required('manager')
 def manager_rooms():
     rooms = query(
-        'SELECT r.room_id, r.room_no, r.total_beds, r.available_beds, h.hostel_name, '
+        'SELECT r.room_id, r.room_no, r.total_beds, r.available_beds, h.hostel_name, h.gender, '
         '(SELECT COUNT(*) FROM students s WHERE s.room_id = r.room_id) AS occupants '
         'FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id ORDER BY r.room_id'
     )
-    hostels = query('SELECT hostel_id, hostel_name, location, total_rooms FROM hostels ORDER BY hostel_id')
+    hostels = query(
+        'SELECT hostel_id, hostel_name, location, gender, total_rooms, lat, lng, radius_m '
+        'FROM hostels ORDER BY hostel_id'
+    )
     return render_template('manager/rooms.html', rooms=rooms, hostels=hostels)
+
+
+def _hostel_form():
+    hostel_name = request.form.get('hostel_name', '').strip()[:150]
+    location = request.form.get('location', '').strip()[:255]
+    gender = request.form.get('gender', '')
+    lat = request.form.get('lat', '').strip()
+    lng = request.form.get('lng', '').strip()
+    radius_m = request.form.get('radius_m', '').strip() or '50'
+    try:
+        radius_m = int(radius_m)
+        radius_m = max(10, min(radius_m, 2000))
+        lat_f = float(lat) if lat else None
+        lng_f = float(lng) if lng else None
+    except ValueError:
+        return None, 'Coordinates must be numbers.'
+    if not hostel_name:
+        return None, 'Hostel name is required.'
+    if gender not in ('Male', 'Female'):
+        return None, 'Hostel gender is required.'
+    return {
+        'hostel_name': hostel_name,
+        'location': location,
+        'gender': gender,
+        'lat': lat_f,
+        'lng': lng_f,
+        'radius_m': radius_m,
+    }, None
+
+
+def _hostel_allocated(hostel_id):
+    row = query(
+        'SELECT COUNT(*) AS c FROM students s JOIN rooms r ON s.room_id = r.room_id '
+        'WHERE r.hostel_id = %s',
+        (hostel_id,), one=True,
+    )
+    return row['c'] if row else 0
+
+
+def _hostel_same_address(location, exclude_id=None):
+    if not location:
+        return None
+    sql = 'SELECT hostel_id, hostel_name FROM hostels WHERE location = %s'
+    params = [location]
+    if exclude_id is not None:
+        sql += ' AND hostel_id != %s'
+        params.append(exclude_id)
+    return query(sql, tuple(params), one=True)
 
 
 @app.route('/manager/hostels/add', methods=['GET', 'POST'])
@@ -249,18 +393,81 @@ def manager_rooms():
 @role_required('manager')
 def add_hostel():
     if request.method == 'POST':
-        hostel_name = request.form.get('hostel_name', '').strip()
-        location = request.form.get('location', '').strip()
-        if not hostel_name:
-            flash('Hostel name is required.', 'danger')
+        data, err = _hostel_form()
+        dup = _hostel_same_address(data['location']) if data else None
+        if err:
+            flash(err, 'danger')
+        elif dup:
+            flash(f'Another hostel already uses this address: "{dup["hostel_name"]}". Use a different address.', 'danger')
         else:
-            execute(
-                'INSERT INTO hostels (hostel_name, location, total_rooms) VALUES (%s, %s, 0)',
-                (hostel_name, location),
-            )
-            flash(f'Hostel "{hostel_name}" added.', 'success')
-            return redirect(url_for('manager_rooms'))
+            try:
+                execute(
+                    'INSERT INTO hostels (hostel_name, location, gender, total_rooms, lat, lng, radius_m) '
+                    'VALUES (%s, %s, %s, 0, %s, %s, %s)',
+                    (data['hostel_name'], data['location'], data['gender'], data['lat'], data['lng'], data['radius_m']),
+                )
+            except mysql.connector.Error as e:
+                flash(f'Could not add the hostel: {e}', 'danger')
+            else:
+                flash(f'Hostel "{data["hostel_name"]}" added.', 'success')
+                return redirect(url_for('manager_rooms'))
     return render_template('manager/add_hostel.html')
+
+
+@app.route('/manager/hostels/edit/<int:hostel_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('manager')
+def edit_hostel(hostel_id):
+    hostel = query('SELECT * FROM hostels WHERE hostel_id = %s', (hostel_id,), one=True)
+    if not hostel:
+        flash('Hostel not found.', 'danger')
+        return redirect(url_for('manager_rooms'))
+    if request.method == 'POST':
+        data, err = _hostel_form()
+        dup = _hostel_same_address(data['location'], exclude_id=hostel_id) if data else None
+        if err:
+            flash(err, 'danger')
+        elif dup:
+            flash(f'Another hostel already uses this address: "{dup["hostel_name"]}". Use a different address.', 'danger')
+        elif data['gender'] != hostel['gender'] and _hostel_allocated(hostel_id):
+            flash('Cannot change the hostel gender while students are allocated to it. Move them first.', 'danger')
+        else:
+            try:
+                execute(
+                    'UPDATE hostels SET hostel_name=%s, location=%s, gender=%s, lat=%s, lng=%s, radius_m=%s '
+                    'WHERE hostel_id=%s',
+                    (data['hostel_name'], data['location'], data['gender'], data['lat'], data['lng'],
+                     data['radius_m'], hostel_id),
+                )
+            except mysql.connector.Error as e:
+                flash(f'Could not save the hostel: {e}', 'danger')
+            else:
+                flash(f'Hostel "{data["hostel_name"]}" updated.', 'success')
+                return redirect(url_for('manager_rooms'))
+        if data:
+            hostel = {**hostel, **data}
+    return render_template('manager/add_hostel.html', hostel=hostel)
+
+
+@app.route('/manager/hostels/delete/<int:hostel_id>', methods=['POST'])
+@login_required
+@role_required('manager')
+def delete_hostel(hostel_id):
+    hostel = query('SELECT * FROM hostels WHERE hostel_id = %s', (hostel_id,), one=True)
+    if not hostel:
+        flash('Hostel not found.', 'danger')
+        return redirect(url_for('manager_rooms'))
+    allocated = _hostel_allocated(hostel_id)
+    if allocated:
+        flash(
+            f'Cannot delete "{hostel["hostel_name"]}": {allocated} student(s) are still allocated to it. '
+            'Move or delete them first.',
+            'danger',
+        )
+        return redirect(url_for('manager_rooms'))
+    execute('DELETE FROM hostels WHERE hostel_id = %s', (hostel_id,))
+    flash(f'Hostel "{hostel["hostel_name"]}" deleted (its rooms were removed too).', 'success')
+    return redirect(url_for('manager_rooms'))
 
 
 @app.route('/manager/rooms/add', methods=['GET', 'POST'])
@@ -289,7 +496,7 @@ def add_room():
             execute('UPDATE hostels SET total_rooms = total_rooms + 1 WHERE hostel_id = %s', (hostel_id,))
             flash(f'Room {room_no} added with {total_beds} beds.', 'success')
             return redirect(url_for('manager_rooms'))
-    hostels = query('SELECT hostel_id, hostel_name FROM hostels ORDER BY hostel_id')
+    hostels = query('SELECT hostel_id, hostel_name, gender FROM hostels ORDER BY hostel_id')
     return render_template('manager/add_room.html', hostels=hostels)
 
 
@@ -300,12 +507,28 @@ def allocate_room():
     if request.method == 'POST':
         student_id = request.form.get('student_id')
         room_id = request.form.get('room_id')
+        student = query('SELECT gender FROM students WHERE student_id = %s', (student_id,), one=True)
+        room = query(
+            'SELECT h.gender AS hostel_gender, h.hostel_name FROM rooms r '
+            'JOIN hostels h ON r.hostel_id = h.hostel_id WHERE r.room_id = %s',
+            (room_id,), one=True,
+        )
+        if not student or not room:
+            flash('Invalid student or room selected.', 'danger')
+            return redirect(url_for('allocate_room'))
+        if student['gender'] != room['hostel_gender']:
+            flash(
+                f'Gender mismatch: a {student["gender"]} student cannot be placed in the '
+                f'{room["hostel_name"]} ({room["hostel_gender"]}) hostel.',
+                'danger',
+            )
+            return redirect(url_for('allocate_room'))
         conn = get_connection()
         try:
             cur = conn.cursor(dictionary=True)
             cur.execute('SELECT available_beds FROM rooms WHERE room_id = %s FOR UPDATE', (room_id,))
-            room = cur.fetchone()
-            if not room or room['available_beds'] <= 0:
+            room_row = cur.fetchone()
+            if not room_row or room_row['available_beds'] <= 0:
                 flash('No beds available in that room.', 'danger')
             else:
                 cur.execute('UPDATE rooms SET available_beds = available_beds - 1 WHERE room_id = %s', (room_id,))
@@ -319,8 +542,12 @@ def allocate_room():
             cur.close()
             conn.close()
         return redirect(url_for('allocate_room'))
-    unallocated = query('SELECT student_id, name FROM students WHERE room_id IS NULL ORDER BY student_id')
-    free_rooms = query('SELECT room_id, room_no, available_beds FROM rooms WHERE available_beds > 0 ORDER BY room_id')
+    unallocated = query('SELECT student_id, name, gender FROM students WHERE room_id IS NULL ORDER BY student_id')
+    free_rooms = query(
+        'SELECT r.room_id, r.room_no, r.available_beds, h.gender '
+        'FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id '
+        'WHERE r.available_beds > 0 ORDER BY r.room_id'
+    )
     return render_template('manager/allocate_room.html', students=unallocated, rooms=free_rooms)
 
 
@@ -331,7 +558,18 @@ def manager_complaints():
     if request.method == 'POST':
         complaint_id = request.form.get('complaint_id')
         status = request.form.get('status')
+        complaint = query(
+            'SELECT student_id FROM complaints WHERE complaint_id = %s',
+            (complaint_id,), one=True,
+        )
         execute('UPDATE complaints SET status = %s WHERE complaint_id = %s', (status, complaint_id))
+        if complaint:
+            notify_student(
+                complaint['student_id'],
+                'Complaint update',
+                f'Your complaint status is now "{status}".',
+                '/student/complaints',
+            )
         flash('Complaint status updated.', 'success')
         return redirect(url_for('manager_complaints'))
     complaints = query(
@@ -353,6 +591,12 @@ def manager_invoices():
         execute(
             'INSERT INTO invoices (student_id, amount, due_date, payment_status) VALUES (%s, %s, %s, %s)',
             (student_id, amount, due_date, 'Unpaid'),
+        )
+        notify_student(
+            student_id,
+            'New invoice',
+            f'A new invoice of ${amount} was issued. Due date: {due_date}.',
+            '/student/invoices',
         )
         flash('Invoice generated.', 'success')
         return redirect(url_for('manager_invoices'))
@@ -441,22 +685,61 @@ def manager_mess_menu():
 @role_required('manager')
 def manager_violations():
     if request.method == 'POST':
-        target = request.form.get('target')
-        target_id = request.form.get('target_id')
-        description = request.form.get('description', '').strip()
-        if target == 'student':
-            execute(
-                'INSERT INTO violations (student_id, staff_id, description, date, recorded_by) '
-                'VALUES (%s, NULL, %s, %s, %s)',
-                (target_id, description, date.today().isoformat(), session['role_id']),
-            )
+        action = request.form.get('action', 'record')
+        if action == 'notice':
+            recipient_type = request.form.get('recipient_type')
+            recipient_id = request.form.get('recipient_id')
+            message = request.form.get('message', '').strip()
+            if message and recipient_id:
+                if recipient_type == 'student':
+                    notify_student(recipient_id, 'Notice from the hostel', message)
+                else:
+                    notify_staff(recipient_id, 'Notice from the hostel', message)
+                flash('Notification sent.', 'success')
+            else:
+                flash('Recipient and message are required.', 'danger')
+        elif action == 'row_notify':
+            violation_id = request.form.get('violation_id')
+            message = request.form.get('message', '').strip()
+            row = query(
+                'SELECT student_id, staff_id FROM violations WHERE violation_id = %s',
+                (violation_id,), one=True,
+            ) if violation_id else None
+            if not row:
+                flash('Violation not found.', 'danger')
+            elif not message:
+                flash('Message is required.', 'danger')
+            else:
+                if row['student_id']:
+                    notify_student(row['student_id'], 'Violation', message)
+                elif row['staff_id']:
+                    notify_staff(row['staff_id'], 'Violation', message)
+                flash('Notification sent to the violator.', 'success')
         else:
-            execute(
-                'INSERT INTO violations (student_id, staff_id, description, date, recorded_by) '
-                'VALUES (NULL, %s, %s, %s, %s)',
-                (target_id, description, date.today().isoformat(), session['role_id']),
-            )
-        flash('Violation recorded.', 'success')
+            target = request.form.get('target')
+            target_id = request.form.get('target_id')
+            description = request.form.get('description', '').strip()
+            notify = request.form.get('notify') == 'on'
+            custom_message = request.form.get('notify_message', '').strip()
+            if target == 'student':
+                execute(
+                    'INSERT INTO violations (student_id, staff_id, description, date, recorded_by) '
+                    'VALUES (%s, NULL, %s, %s, %s)',
+                    (target_id, description, date.today().isoformat(), session['role_id']),
+                )
+            else:
+                execute(
+                    'INSERT INTO violations (student_id, staff_id, description, date, recorded_by) '
+                    'VALUES (NULL, %s, %s, %s, %s)',
+                    (target_id, description, date.today().isoformat(), session['role_id']),
+                )
+            if notify:
+                message = custom_message or f'You received a violation: {description[:150]}'
+                if target == 'student':
+                    notify_student(target_id, 'Violation', message)
+                else:
+                    notify_staff(target_id, 'Violation', message)
+            flash('Violation recorded.', 'success')
         return redirect(url_for('manager_violations'))
     violations = query(
         'SELECT v.*, s.name AS student_name, st.name AS staff_name FROM violations v '
@@ -469,14 +752,47 @@ def manager_violations():
     return render_template('manager/violations.html', violations=violations, students=students, staff_members=staff_members)
 
 
+@app.route('/manager/notify', methods=['POST'])
+@login_required
+@role_required('manager')
+def manager_notify():
+    recipient_type = request.form.get('recipient_type')
+    recipient_id = request.form.get('recipient_id')
+    message = request.form.get('message', '').strip()
+    if message and recipient_id:
+        if recipient_type == 'student':
+            notify_student(recipient_id, 'Notice from the hostel', message)
+        else:
+            notify_staff(recipient_id, 'Notice from the hostel', message)
+        flash('Notification sent.', 'success')
+    else:
+        flash('Recipient and message are required.', 'danger')
+    return redirect(url_for('manager_violations'))
+
+
 @app.route('/manager/violations/resolve/<int:violation_id>', methods=['POST'])
 @login_required
 @role_required('manager')
 def resolve_violation(violation_id):
+    violation = query(
+        'SELECT student_id, staff_id FROM violations WHERE violation_id = %s',
+        (violation_id,), one=True,
+    )
     execute(
         'UPDATE violations SET status = %s, resolved_at = %s WHERE violation_id = %s',
         ('Resolved', date.today().isoformat(), violation_id),
     )
+    if violation:
+        if violation['student_id']:
+            notify_student(
+                violation['student_id'], 'Violation',
+                'Your violation was marked as resolved.',
+            )
+        elif violation['staff_id']:
+            notify_staff(
+                violation['staff_id'], 'Violation',
+                'Your violation was marked as resolved.',
+            )
     flash('Violation marked as resolved.', 'success')
     return redirect(url_for('manager_violations'))
 
@@ -500,7 +816,17 @@ def manager_mess_off():
     if request.method == 'POST':
         request_id = request.form.get('request_id')
         status = request.form.get('status')
+        mess_off = query(
+            'SELECT student_id FROM mess_off_requests WHERE mess_off_id = %s',
+            (request_id,), one=True,
+        )
         execute('UPDATE mess_off_requests SET status = %s WHERE mess_off_id = %s', (status, request_id))
+        if mess_off:
+            notify_student(
+                mess_off['student_id'], 'Mess-off request',
+                f'Your mess-off request was {status.lower()}.',
+                '/student/mess-off',
+            )
         flash(f'Mess off request {status.lower()}.', 'success')
         return redirect(url_for('manager_mess_off'))
     requests = query(
@@ -519,7 +845,7 @@ def manager_parcels():
         'SELECT p.*, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
         'FROM parcels p JOIN students s ON p.student_id = s.student_id '
         'LEFT JOIN staff r ON p.received_by_staff = r.staff_id '
-        'LEFT JOIN staff c ON p.collected_by_staff = c.staff_id '
+        'LEFT JOIN students c ON p.collected_by_student = c.student_id '
         'ORDER BY p.received_date DESC, p.parcel_id DESC'
     )
     return render_template('manager/parcels.html', parcels=parcels)
@@ -634,6 +960,20 @@ def student_dashboard():
 def student_profile():
     student = query('SELECT * FROM students WHERE student_id = %s', (session['role_id'],), one=True)
     if request.method == 'POST':
+        new_gender = request.form.get('gender', '')
+        if student['gender'] != new_gender and student['room_id']:
+            room_hostel = query(
+                'SELECT h.gender FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id '
+                'WHERE r.room_id = %s',
+                (student['room_id'],), one=True,
+            )
+            if room_hostel and room_hostel['gender'] != new_gender:
+                flash(
+                    f'Cannot change gender to {new_gender} while allocated to the '
+                    f'{room_hostel["gender"]} hostel.',
+                    'danger',
+                )
+                return redirect(url_for('student_profile'))
         execute(
             'UPDATE students SET email = %s, phone = %s, address = %s, gender = %s '
             'WHERE student_id = %s',
@@ -641,7 +981,7 @@ def student_profile():
                 request.form.get('email', '').strip(),
                 request.form.get('phone', '').strip(),
                 request.form.get('address', '').strip(),
-                request.form.get('gender', ''),
+                new_gender,
                 session['role_id'],
             ),
         )
@@ -674,6 +1014,15 @@ def student_complaints():
                 'INSERT INTO complaints (student_id, room_id, description, status, date) '
                 'VALUES (%s, %s, %s, %s, %s)',
                 (session['role_id'], session.get('room_id'), description, 'Pending', date.today().isoformat()),
+            )
+            student = query(
+                'SELECT name FROM students WHERE student_id = %s',
+                (session['role_id'],), one=True,
+            )
+            notify_managers(
+                'New complaint',
+                f"{student['name']} submitted a complaint: {description[:100]}",
+                '/manager/complaints',
             )
             flash('Complaint submitted.', 'success')
         return redirect(url_for('student_complaints'))
@@ -708,6 +1057,15 @@ def student_mess_off():
                 'VALUES (%s, %s, %s, %s)',
                 (session['role_id'], start_date, end_date, 'Pending'),
             )
+            student = query(
+                'SELECT name FROM students WHERE student_id = %s',
+                (session['role_id'],), one=True,
+            )
+            notify_managers(
+                'Mess-off request',
+                f"{student['name']} requested mess-off from {start_date} to {end_date}.",
+                '/manager/mess-off',
+            )
             flash('Mess off request submitted.', 'success')
         return redirect(url_for('student_mess_off'))
     requests = query(
@@ -727,6 +1085,15 @@ def student_feedback():
             execute(
                 'INSERT INTO feedback (student_id, description, date) VALUES (%s, %s, %s)',
                 (session['role_id'], description, date.today().isoformat()),
+            )
+            student = query(
+                'SELECT name FROM students WHERE student_id = %s',
+                (session['role_id'],), one=True,
+            )
+            notify_managers(
+                'New feedback',
+                f"{student['name']} submitted feedback: {description[:100]}",
+                '/manager/feedback',
             )
             flash('Feedback submitted. Thank you!', 'success')
         return redirect(url_for('student_feedback'))
@@ -758,19 +1125,129 @@ def student_in_out():
     return render_template('student/in_out.html', records=records)
 
 
-@app.route('/student/parcels')
+@app.route('/student/parcels', methods=['GET', 'POST'])
 @login_required
 @role_required('student')
 def student_parcels():
+    if request.method == 'POST':
+        if request.form.get('action') == 'collect':
+            parcel_id = request.form.get('parcel_id')
+            parcel = query(
+                'SELECT received_by_staff FROM parcels WHERE parcel_id = %s AND student_id = %s',
+                (parcel_id, session['role_id']), one=True,
+            )
+            if parcel:
+                execute(
+                    "UPDATE parcels SET status = 'Collected', collected_at = %s, "
+                    'collected_by_student = %s WHERE parcel_id = %s AND status = %s',
+                    (
+                        datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        session['role_id'],
+                        parcel_id,
+                        'Arrived',
+                    ),
+                )
+                student = query(
+                    'SELECT name FROM students WHERE student_id = %s',
+                    (session['role_id'],), one=True,
+                )
+                notify_staff(
+                    parcel['received_by_staff'], 'Parcel collected',
+                    f"{student['name']} collected their parcel.",
+                    '/staff/parcels',
+                )
+                notify_managers(
+                    'Parcel collected',
+                    f"{student['name']} collected their parcel.",
+                    '/manager/parcels',
+                )
+                flash('Parcel collected. Enjoy!', 'success')
+        return redirect(url_for('student_parcels'))
     parcels = query(
         'SELECT p.*, r.name AS received_by, c.name AS collected_by '
         'FROM parcels p '
         'LEFT JOIN staff r ON p.received_by_staff = r.staff_id '
-        'LEFT JOIN staff c ON p.collected_by_staff = c.staff_id '
+        'LEFT JOIN students c ON p.collected_by_student = c.student_id '
         'WHERE p.student_id = %s ORDER BY p.received_date DESC, p.parcel_id DESC',
         (session['role_id'],),
     )
     return render_template('student/parcels.html', parcels=parcels)
+
+
+@app.route('/student/attendance', methods=['GET', 'POST'])
+@login_required
+@role_required('student')
+def student_attendance():
+    today_str = date.today().isoformat()
+    if request.method == 'POST':
+        status = request.form.get('status')
+        lat = request.form.get('lat')
+        lng = request.form.get('lng')
+        student = query(
+            'SELECT s.student_id, r.hostel_id FROM students s '
+            'LEFT JOIN rooms r ON s.room_id = r.room_id WHERE s.student_id = %s',
+            (session['role_id'],), one=True,
+        )
+        if status == 'Leave':
+            execute(
+                'INSERT INTO student_attendance (student_id, date, status) VALUES (%s, %s, %s) '
+                'ON DUPLICATE KEY UPDATE status = %s',
+                (session['role_id'], today_str, 'Leave', 'Leave'),
+            )
+            flash('Attendance recorded for today.', 'success')
+        elif status == 'Present' and lat and lng and student and student['hostel_id']:
+            try:
+                lat_f, lng_f = float(lat), float(lng)
+            except ValueError:
+                lat_f = None
+            if lat_f is not None:
+                hostel = query(
+                    'SELECT hostel_name, lat, lng, radius_m FROM hostels WHERE hostel_id = %s',
+                    (student['hostel_id'],), one=True,
+                )
+                if not hostel or hostel['lat'] is None or hostel['lng'] is None:
+                    flash('Location is not configured for your hostel. Please contact the manager.', 'danger')
+                else:
+                    dist = distance_m(lat_f, lng_f, float(hostel['lat']), float(hostel['lng']))
+                    if dist <= float(hostel['radius_m']):
+                        execute(
+                            'INSERT INTO student_attendance (student_id, date, status) VALUES (%s, %s, %s) '
+                            'ON DUPLICATE KEY UPDATE status = %s',
+                            (session['role_id'], today_str, 'Present', 'Present'),
+                        )
+                        flash(
+                            f'Attendance granted. You are {dist / 1000:.2f} km from '
+                            f'{hostel["hostel_name"]}.',
+                            'success',
+                        )
+                    else:
+                        flash(
+                            f'You are {dist / 1000:.2f} km from {hostel["hostel_name"]}. '
+                            f'Attendance NOT granted (outside the {hostel["radius_m"]} m area).',
+                            'danger',
+                        )
+            else:
+                flash('Could not read your location. Please allow location access.', 'danger')
+        else:
+            flash('You need an allocated room and your location to mark Present.', 'danger')
+        return redirect(url_for('student_attendance'))
+    records = query(
+        'SELECT * FROM student_attendance WHERE student_id = %s ORDER BY date DESC',
+        (session['role_id'],),
+    )
+    student = query(
+        'SELECT s.name, r.hostel_id, h.hostel_name, h.lat, h.lng, h.radius_m '
+        'FROM students s LEFT JOIN rooms r ON s.room_id = r.room_id '
+        'LEFT JOIN hostels h ON r.hostel_id = h.hostel_id WHERE s.student_id = %s',
+        (session['role_id'],), one=True,
+    )
+    today_record = query(
+        'SELECT * FROM student_attendance WHERE student_id = %s AND date = %s',
+        (session['role_id'], today_str), one=True,
+    )
+    return render_template(
+        'student/attendance.html', records=records, student=student, today_record=today_record,
+    )
 
 
 # =====================================================================
@@ -816,6 +1293,11 @@ def staff_visitors():
                 'VALUES (%s, %s, %s, %s)',
                 (student_id, session['role_id'], visitor_name, visit_date),
             )
+            notify_student(
+                student_id, 'Visitor arrived',
+                f'{visitor_name} came to see you on {visit_date}.',
+                '/student/in-out',
+            )
             flash('Visitor registered.', 'success')
         return redirect(url_for('staff_visitors'))
     students = query('SELECT student_id, name FROM students ORDER BY student_id')
@@ -831,32 +1313,27 @@ def staff_visitors():
 @role_required('staff')
 def staff_parcels():
     if request.method == 'POST':
-        action = request.form.get('action')
-        if action == 'receive':
-            student_id = request.form.get('student_id')
-            received_date = request.form.get('received_date')
-            if student_id and received_date:
-                execute(
-                    'INSERT INTO parcels (student_id, received_by_staff, status, received_date) '
-                    'VALUES (%s, %s, %s, %s)',
-                    (student_id, session['role_id'], 'Arrived', received_date),
-                )
-                flash('Parcel received and registered.', 'success')
-        elif action == 'collect':
-            parcel_id = request.form.get('parcel_id')
+        student_id = request.form.get('student_id')
+        received_date = request.form.get('received_date')
+        if student_id and received_date:
             execute(
-                "UPDATE parcels SET status = 'Collected', collected_at = %s, collected_by_staff = %s "
-                'WHERE parcel_id = %s',
-                (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), session['role_id'], parcel_id),
+                'INSERT INTO parcels (student_id, received_by_staff, status, received_date) '
+                'VALUES (%s, %s, %s, %s)',
+                (student_id, session['role_id'], 'Arrived', received_date),
             )
-            flash('Parcel marked as collected.', 'success')
+            notify_student(
+                student_id, 'Parcel arrived',
+                'A parcel has arrived for you. Please collect it at the front desk.',
+                '/student/parcels',
+            )
+            flash('Parcel received and registered.', 'success')
         return redirect(url_for('staff_parcels'))
     students = query('SELECT student_id, name FROM students ORDER BY student_id')
     parcels = query(
         'SELECT p.*, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
         'FROM parcels p JOIN students s ON p.student_id = s.student_id '
         'LEFT JOIN staff r ON p.received_by_staff = r.staff_id '
-        'LEFT JOIN staff c ON p.collected_by_staff = c.staff_id '
+        'LEFT JOIN students c ON p.collected_by_student = c.student_id '
         'ORDER BY p.received_date DESC, p.parcel_id DESC'
     )
     return render_template('staff/parcels.html', students=students, parcels=parcels)
@@ -891,20 +1368,67 @@ def staff_in_out():
 @login_required
 @role_required('staff')
 def staff_attendance():
+    today_str = date.today().isoformat()
     if request.method == 'POST':
         status = request.form.get('status')
-        execute(
-            'INSERT INTO staff_attendance (staff_id, date, status) VALUES (%s, %s, %s) '
-            'ON DUPLICATE KEY UPDATE status = %s',
-            (session['role_id'], date.today().isoformat(), status, status),
-        )
-        flash('Attendance recorded for today.', 'success')
+        lat = request.form.get('lat')
+        lng = request.form.get('lng')
+        hostel_id = request.form.get('hostel_id')
+        if status == 'Leave':
+            execute(
+                'INSERT INTO staff_attendance (staff_id, date, status) VALUES (%s, %s, %s) '
+                'ON DUPLICATE KEY UPDATE status = %s',
+                (session['role_id'], today_str, 'Leave', 'Leave'),
+            )
+            flash('Attendance recorded for today.', 'success')
+        elif status == 'Present' and lat and lng and hostel_id:
+            try:
+                lat_f, lng_f = float(lat), float(lng)
+            except ValueError:
+                lat_f = None
+            if lat_f is not None:
+                hostel = query(
+                    'SELECT hostel_name, lat, lng, radius_m FROM hostels WHERE hostel_id = %s',
+                    (hostel_id,), one=True,
+                )
+                if not hostel or hostel['lat'] is None or hostel['lng'] is None:
+                    flash('Location is not configured for that hostel. Please contact the manager.', 'danger')
+                else:
+                    dist = distance_m(lat_f, lng_f, float(hostel['lat']), float(hostel['lng']))
+                    if dist <= float(hostel['radius_m']):
+                        execute(
+                            'INSERT INTO staff_attendance (staff_id, date, status) VALUES (%s, %s, %s) '
+                            'ON DUPLICATE KEY UPDATE status = %s',
+                            (session['role_id'], today_str, 'Present', 'Present'),
+                        )
+                        flash(
+                            f'Attendance granted. You are {dist / 1000:.2f} km from '
+                            f'{hostel["hostel_name"]}.',
+                            'success',
+                        )
+                    else:
+                        flash(
+                            f'You are {dist / 1000:.2f} km from {hostel["hostel_name"]}. '
+                            f'Attendance NOT granted (outside the {hostel["radius_m"]} m area).',
+                            'danger',
+                        )
+            else:
+                flash('Could not read your location. Please allow location access.', 'danger')
+        else:
+            flash('Location is required to mark Present.', 'danger')
         return redirect(url_for('staff_attendance'))
     records = query(
         'SELECT * FROM staff_attendance WHERE staff_id = %s ORDER BY date DESC',
         (session['role_id'],),
     )
-    return render_template('staff/attendance.html', records=records)
+    hostels = query('SELECT hostel_id, hostel_name, lat, lng, radius_m FROM hostels ORDER BY hostel_id')
+    today_record = query(
+        'SELECT * FROM staff_attendance WHERE staff_id = %s AND date = %s',
+        (session['role_id'], today_str), one=True,
+    )
+    return render_template(
+        'staff/attendance.html', records=records, hostels=hostels, today_record=today_record,
+    )
 
 
 if __name__ == '__main__':

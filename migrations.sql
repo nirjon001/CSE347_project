@@ -1,10 +1,17 @@
 -- =====================================================================
--- Migration — upgrades an existing hostel_management database that was
--- created BEFORE the "8 fixes" build (violation status + parcel tracking).
+-- Migration — upgrades an existing hostel_management database to the
+-- current schema:
+--   * violation status + parcel tracking      (from the "8 fixes" build)
+--   * parcels collected by the STUDENT        (collected_by_staff ->
+--                                              collected_by_student)
+--   * hostels: gender (boys/girls separation) + geofence coords
+--   * notifications table + bell-icon system
+--   * student-room gender guard trigger
 --
 -- SAFE TO RUN ANY TIME / ANY NUMBER OF TIMES:
---   * on the OLD schema   -> adds the new columns, foreign keys, trigger
---   * on an already-updated database -> does nothing, raises no errors
+--   * on the ORIGINAL schema  -> applies every step
+--   * on the previous build   -> applies only the new steps
+--   * on the current schema   -> does nothing, raises no errors
 --
 -- Run with:   mysql -u root < migrations.sql
 -- (or import the file in phpMyAdmin)
@@ -12,27 +19,31 @@
 -- Fresh installs don't need this file: hostel_management_schema.sql
 -- already includes everything below.
 --
--- Note: uses MariaDB "ADD COLUMN IF NOT EXISTS" syntax (the project runs
--- on XAMPP MariaDB). The two foreign keys go through a tiny stored
--- procedure because MariaDB has no "ADD CONSTRAINT IF NOT EXISTS".
+-- Note: uses MariaDB "ADD COLUMN IF NOT EXISTS" / "CREATE TABLE IF NOT
+-- EXISTS" syntax (XAMPP MariaDB 10.4). MariaDB has no "ADD CONSTRAINT
+-- IF NOT EXISTS" / "DROP FOREIGN KEY IF EXISTS", so FKs and index drops
+-- go through information_schema-guarded stored procedures.
 -- =====================================================================
 USE hostel_management;
 
+-- ---------------------------------------------------------------------
 -- 1) Violations: add a resolvable status
+-- ---------------------------------------------------------------------
 ALTER TABLE violations
     ADD COLUMN IF NOT EXISTS status      ENUM('Open', 'Resolved') NOT NULL DEFAULT 'Open' AFTER date,
     ADD COLUMN IF NOT EXISTS resolved_at DATE NULL AFTER status;
 
--- 2) Parcels: track who received it and who/when it was collected
+-- ---------------------------------------------------------------------
+-- 2) Parcels: staff who received it + when it was collected
+-- ---------------------------------------------------------------------
 ALTER TABLE parcels
-    ADD COLUMN IF NOT EXISTS received_by_staff  INT NULL AFTER student_id,
-    ADD COLUMN IF NOT EXISTS collected_at       DATETIME NULL AFTER received_date,
-    ADD COLUMN IF NOT EXISTS collected_by_staff INT NULL AFTER collected_at;
+    ADD COLUMN IF NOT EXISTS received_by_staff INT NULL AFTER student_id,
+    ADD COLUMN IF NOT EXISTS collected_at      DATETIME NULL AFTER received_date;
 
--- 3) Parcel foreign keys (added only if still missing)
-DROP PROCEDURE IF EXISTS migrate_parcel_fks;
+-- 3) Parcel received_by FK (original schema had none)
+DROP PROCEDURE IF EXISTS migrate_parcel_received_fk;
 DELIMITER //
-CREATE PROCEDURE migrate_parcel_fks()
+CREATE PROCEDURE migrate_parcel_received_fk()
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.REFERENTIAL_CONSTRAINTS
                    WHERE CONSTRAINT_SCHEMA = DATABASE()
@@ -40,18 +51,123 @@ BEGIN
         ALTER TABLE parcels ADD CONSTRAINT fk_parcels_received_by
             FOREIGN KEY (received_by_staff) REFERENCES staff(staff_id) ON DELETE SET NULL;
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.REFERENTIAL_CONSTRAINTS
-                   WHERE CONSTRAINT_SCHEMA = DATABASE()
-                     AND CONSTRAINT_NAME = 'fk_parcels_collected_by') THEN
-        ALTER TABLE parcels ADD CONSTRAINT fk_parcels_collected_by
-            FOREIGN KEY (collected_by_staff) REFERENCES staff(staff_id) ON DELETE SET NULL;
+END//
+DELIMITER ;
+CALL migrate_parcel_received_fk();
+DROP PROCEDURE IF EXISTS migrate_parcel_received_fk;
+
+-- 4) Parcels: collection now belongs to the STUDENT.
+--    Drop the old collected_by_staff column (and whichever FK referenced
+--    it — the name may be auto-generated or from an earlier migration),
+--    then add collected_by_student.
+DROP PROCEDURE IF EXISTS migrate_parcel_collect;
+DELIMITER //
+CREATE PROCEDURE migrate_parcel_collect()
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE fk_name VARCHAR(64);
+    DECLARE cur CURSOR FOR
+        SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'parcels'
+          AND COLUMN_NAME = 'collected_by_staff'
+          AND REFERENCED_TABLE_NAME = 'staff';
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+
+    OPEN cur;
+    drop_loop: LOOP
+        FETCH cur INTO fk_name;
+        IF done THEN LEAVE drop_loop; END IF;
+        SET @s = CONCAT('ALTER TABLE parcels DROP FOREIGN KEY `', fk_name, '`');
+        PREPARE stmt FROM @s;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END LOOP;
+    CLOSE cur;
+
+    IF EXISTS (SELECT 1 FROM information_schema.COLUMNS
+               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'parcels'
+                 AND COLUMN_NAME = 'collected_by_staff') THEN
+        ALTER TABLE parcels DROP COLUMN collected_by_staff;
     END IF;
 END//
 DELIMITER ;
-CALL migrate_parcel_fks();
-DROP PROCEDURE IF EXISTS migrate_parcel_fks;
+CALL migrate_parcel_collect();
+DROP PROCEDURE IF EXISTS migrate_parcel_collect;
 
--- 4) Trigger: free a bed automatically when a student is deleted
+ALTER TABLE parcels
+    ADD COLUMN IF NOT EXISTS collected_by_student INT NULL AFTER collected_at;
+
+DROP PROCEDURE IF EXISTS migrate_parcel_collect_fk;
+DELIMITER //
+CREATE PROCEDURE migrate_parcel_collect_fk()
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.REFERENTIAL_CONSTRAINTS
+                   WHERE CONSTRAINT_SCHEMA = DATABASE()
+                     AND CONSTRAINT_NAME = 'fk_parcels_collected_by_student') THEN
+        ALTER TABLE parcels ADD CONSTRAINT fk_parcels_collected_by_student
+            FOREIGN KEY (collected_by_student) REFERENCES students(student_id) ON DELETE SET NULL;
+    END IF;
+END//
+DELIMITER ;
+CALL migrate_parcel_collect_fk();
+DROP PROCEDURE IF EXISTS migrate_parcel_collect_fk;
+
+-- ---------------------------------------------------------------------
+-- 5) Hostels: gender (single-gender buildings) + geofence for attendance
+--    Gender is added nullable, backfilled by a name heuristic, then made
+--    NOT NULL so it stays safe on any re-run.
+-- ---------------------------------------------------------------------
+ALTER TABLE hostels
+    ADD COLUMN IF NOT EXISTS gender   ENUM('Male', 'Female') NULL AFTER location,
+    ADD COLUMN IF NOT EXISTS lat      DECIMAL(10,7) NULL AFTER total_rooms,
+    ADD COLUMN IF NOT EXISTS lng      DECIMAL(10,7) NULL AFTER lat,
+    ADD COLUMN IF NOT EXISTS radius_m INT NOT NULL DEFAULT 50 AFTER lng;
+
+UPDATE hostels
+SET gender = IF(
+    LOWER(hostel_name) LIKE '%girls%' OR LOWER(hostel_name) LIKE '%ladies%'
+    OR LOWER(hostel_name) LIKE '%female%', 'Female', 'Male')
+WHERE gender IS NULL;
+
+ALTER TABLE hostels MODIFY gender ENUM('Male', 'Female') NOT NULL;
+
+-- Wider text columns so long reverse-geocoded addresses can't overflow
+-- under STRICT_TRANS_TABLES (MODIFY is idempotent - safe to re-run).
+ALTER TABLE hostels MODIFY hostel_name VARCHAR(150) NOT NULL;
+ALTER TABLE hostels MODIFY location     VARCHAR(255) NULL;
+
+-- ---------------------------------------------------------------------
+-- 6) Notifications (bell icon) table + index
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS notifications (
+    notification_id  INT AUTO_INCREMENT PRIMARY KEY,
+    user_id          INT NOT NULL,
+    title            VARCHAR(150) NOT NULL,
+    message          TEXT NOT NULL,
+    link             VARCHAR(255) NULL,
+    is_read          TINYINT(1) NOT NULL DEFAULT 0,
+    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+DROP PROCEDURE IF EXISTS migrate_notifications_index;
+DELIMITER //
+CREATE PROCEDURE migrate_notifications_index()
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.STATISTICS
+                   WHERE TABLE_SCHEMA = DATABASE()
+                     AND TABLE_NAME = 'notifications'
+                     AND INDEX_NAME = 'idx_notifications_user') THEN
+        CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
+    END IF;
+END//
+DELIMITER ;
+CALL migrate_notifications_index();
+DROP PROCEDURE IF EXISTS migrate_notifications_index;
+
+-- ---------------------------------------------------------------------
+-- 7) Triggers (idempotent: drop + recreate)
+-- ---------------------------------------------------------------------
 DROP TRIGGER IF EXISTS trg_student_delete_bed;
 DELIMITER //
 CREATE TRIGGER trg_student_delete_bed
@@ -61,6 +177,44 @@ BEGIN
     IF OLD.room_id IS NOT NULL THEN
         UPDATE rooms SET available_beds = available_beds + 1
         WHERE room_id = OLD.room_id;
+    END IF;
+END//
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trg_student_room_gender;
+DELIMITER //
+CREATE TRIGGER trg_student_room_gender
+BEFORE INSERT ON students
+FOR EACH ROW
+BEGIN
+    IF NEW.room_id IS NOT NULL THEN
+        IF EXISTS (
+            SELECT 1
+            FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id
+            WHERE r.room_id = NEW.room_id AND h.gender <> NEW.gender
+        ) THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Room hostel gender does not match the student gender';
+        END IF;
+    END IF;
+END//
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trg_student_room_gender_upd;
+DELIMITER //
+CREATE TRIGGER trg_student_room_gender_upd
+BEFORE UPDATE ON students
+FOR EACH ROW
+BEGIN
+    IF NEW.room_id IS NOT NULL THEN
+        IF EXISTS (
+            SELECT 1
+            FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id
+            WHERE r.room_id = NEW.room_id AND h.gender <> NEW.gender
+        ) THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Room hostel gender does not match the student gender';
+        END IF;
     END IF;
 END//
 DELIMITER ;

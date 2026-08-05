@@ -11,6 +11,9 @@
 --   student4 / student123 (Student — Nusrat, allocated)
 --   student5 / student123 (Student — Mehedi, not allocated)
 -- =====================================================================
+-- DATA ONLY. Requires hostel_management_schema.sql to be imported first.
+-- Do not run twice without dropping the database (fixed IDs -> duplicate errors).
+-- =====================================================================
 USE hostel_management;
 
 -- USERS (passwords are scrypt hashes generated with werkzeug)
@@ -36,9 +39,9 @@ INSERT INTO staff (staff_id, user_id, name, designation, salary) VALUES
 (3, 4, 'Hanif Uddin',   'Guard',     10000.00);
 
 -- HOSTELS & ROOMS (varied capacities)
-INSERT INTO hostels (hostel_id, hostel_name, location, total_rooms) VALUES
-(1, 'Main Hostel',  'North Campus', 4),
-(2, 'Girls Hostel', 'South Campus', 2);
+INSERT INTO hostels (hostel_id, hostel_name, location, gender, total_rooms, lat, lng, radius_m) VALUES
+(1, 'Main Hostel',  'North Campus', 'Male',   4, 23.8100000, 90.4125000, 50),
+(2, 'Girls Hostel', 'South Campus', 'Female', 2, 23.8140000, 90.4160000, 50);
 
 INSERT INTO rooms (room_id, hostel_id, room_no, total_beds, available_beds) VALUES
 (101, 1, '101', 4, 3),
@@ -117,12 +120,12 @@ INSERT INTO visitors (visitor_id, student_id, registered_by_staff, visitor_name,
 (3, 2, 3, 'Fatema Akter', '2026-07-28'),
 (4, 1, 2, 'Kamal Hossain','2026-07-25');
 
--- PARCELS (who received it + who/when collected)
-INSERT INTO parcels (parcel_id, student_id, received_by_staff, status, received_date, collected_at, collected_by_staff) VALUES
+-- PARCELS (who received it + the student who collected it)
+INSERT INTO parcels (parcel_id, student_id, received_by_staff, status, received_date, collected_at, collected_by_student) VALUES
 (1, 1, 1, 'Arrived',   '2026-07-30', NULL, NULL),
-(2, 3, 1, 'Collected', '2026-07-28', '2026-07-29 10:30:00', 1),
+(2, 3, 1, 'Collected', '2026-07-28', '2026-07-29 10:30:00', 3),
 (3, 2, 2, 'Arrived',   '2026-08-01', NULL, NULL),
-(4, 4, 3, 'Collected', '2026-07-26', '2026-07-27 18:00:00', 1),
+(4, 4, 3, 'Collected', '2026-07-26', '2026-07-27 18:00:00', 4),
 (5, 5, 1, 'Arrived',   '2026-08-02', NULL, NULL);
 
 -- VIOLATIONS (Open + Resolved)

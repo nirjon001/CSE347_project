@@ -17,4 +17,23 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
         });
     });
+
+    var studentSelect = document.querySelector('select[data-role="gender-filter"]');
+    var roomSelect = document.querySelector('select[data-role="gender-options"]');
+    if (studentSelect && roomSelect) {
+        function filterRooms() {
+            var gender = studentSelect.selectedOptions[0] ? studentSelect.selectedOptions[0].dataset.gender : '';
+            var visible = [];
+            Array.prototype.forEach.call(roomSelect.options, function (opt) {
+                var match = !gender || opt.dataset.gender === gender;
+                opt.hidden = !match;
+                if (match) visible.push(opt);
+            });
+            if (visible.length) {
+                visible[0].selected = true;
+            }
+        }
+        studentSelect.addEventListener('change', filterRooms);
+        filterRooms();
+    }
 });

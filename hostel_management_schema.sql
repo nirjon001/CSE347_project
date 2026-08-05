@@ -3,6 +3,9 @@
 -- CSE347: Information System Analysis & Design
 -- Derived directly from the corrected UML class diagram.
 -- =====================================================================
+-- STRUCTURE ONLY. This file creates no data.
+-- Import seed_data.sql afterwards for the demo records.
+-- =====================================================================
 
 CREATE DATABASE IF NOT EXISTS hostel_management;
 USE hostel_management;
@@ -44,9 +47,13 @@ CREATE TABLE staff (
 
 CREATE TABLE hostels (
     hostel_id    INT AUTO_INCREMENT PRIMARY KEY,
-    hostel_name  VARCHAR(100) NOT NULL,
-    location     VARCHAR(150),
-    total_rooms  INT NOT NULL DEFAULT 0
+    hostel_name  VARCHAR(150) NOT NULL,
+    location     VARCHAR(255),
+    gender       ENUM('Male', 'Female') NOT NULL,
+    total_rooms  INT NOT NULL DEFAULT 0,
+    lat          DECIMAL(10,7) NULL,      -- geofence center for attendance
+    lng          DECIMAL(10,7) NULL,
+    radius_m     INT NOT NULL DEFAULT 50
 ) ENGINE=InnoDB;
 
 CREATE TABLE rooms (
@@ -121,10 +128,10 @@ CREATE TABLE parcels (
     status              ENUM('Arrived', 'Collected') DEFAULT 'Arrived',
     received_date       DATE NOT NULL,
     collected_at        DATETIME NULL,         -- when the student collected it
-    collected_by_staff  INT NULL,              -- staff who handed it over
+    collected_by_student INT NULL,             -- the student who collected it
     FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
     FOREIGN KEY (received_by_staff) REFERENCES staff(staff_id) ON DELETE SET NULL,
-    FOREIGN KEY (collected_by_staff) REFERENCES staff(staff_id) ON DELETE SET NULL
+    FOREIGN KEY (collected_by_student) REFERENCES students(student_id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE mess_off_requests (
@@ -200,6 +207,22 @@ CREATE TABLE mess_menu (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
+-- 7. NOTIFICATIONS  (bell icon — one row per recipient per event)
+-- ---------------------------------------------------------------------
+CREATE TABLE notifications (
+    notification_id  INT AUTO_INCREMENT PRIMARY KEY,
+    user_id          INT NOT NULL,             -- recipient (users.user_id)
+    title            VARCHAR(150) NOT NULL,
+    message          TEXT NOT NULL,
+    link             VARCHAR(255) NULL,        -- optional relative URL
+    is_read          TINYINT(1) NOT NULL DEFAULT 0,
+    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
+
+-- ---------------------------------------------------------------------
 -- Helpful indexes for common lookups
 -- ---------------------------------------------------------------------
 CREATE INDEX idx_students_room       ON students(room_id);
@@ -221,6 +244,47 @@ BEGIN
     IF OLD.room_id IS NOT NULL THEN
         UPDATE rooms SET available_beds = available_beds + 1
         WHERE room_id = OLD.room_id;
+    END IF;
+END//
+DELIMITER ;
+
+-- Boys and girls must never share a hostel: reject any student assignment
+-- to a room whose hostel gender does not match the student's gender.
+-- (Allocation is done via UPDATE, so both INSERT and UPDATE are covered.)
+DROP TRIGGER IF EXISTS trg_student_room_gender;
+DELIMITER //
+CREATE TRIGGER trg_student_room_gender
+BEFORE INSERT ON students
+FOR EACH ROW
+BEGIN
+    IF NEW.room_id IS NOT NULL THEN
+        IF EXISTS (
+            SELECT 1
+            FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id
+            WHERE r.room_id = NEW.room_id AND h.gender <> NEW.gender
+        ) THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Room hostel gender does not match the student gender';
+        END IF;
+    END IF;
+END//
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trg_student_room_gender_upd;
+DELIMITER //
+CREATE TRIGGER trg_student_room_gender_upd
+BEFORE UPDATE ON students
+FOR EACH ROW
+BEGIN
+    IF NEW.room_id IS NOT NULL THEN
+        IF EXISTS (
+            SELECT 1
+            FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id
+            WHERE r.room_id = NEW.room_id AND h.gender <> NEW.gender
+        ) THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Room hostel gender does not match the student gender';
+        END IF;
     END IF;
 END//
 DELIMITER ;
