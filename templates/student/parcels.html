@@ -9,7 +9,7 @@
 </div>
 <table>
     <thead>
-        <tr><th>ID</th><th>Received Date</th><th>Received By</th><th>Status</th><th>Collected At</th></tr>
+        <tr><th>ID</th><th>Received Date</th><th>Received By</th><th>Status</th><th>Collected At</th><th>Action</th></tr>
     </thead>
     <tbody>
         {% for p in parcels %}
@@ -22,9 +22,18 @@
                 {% else %}<span class="badge badge-green">Collected</span>{% endif %}
             </td>
             <td>{{ p.collected_at or '-' }}</td>
+            <td>
+                {% if p.status == 'Arrived' %}
+                <form method="post">
+                    <input type="hidden" name="action" value="collect">
+                    <input type="hidden" name="parcel_id" value="{{ p.parcel_id }}">
+                    <button type="submit" class="btn btn-success btn-sm">Collect</button>
+                </form>
+                {% else %}<span class="muted">Collected by you</span>{% endif %}
+            </td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="empty">No parcels for you yet.</td></tr>
+        <tr><td colspan="6" class="empty">No parcels for you yet.</td></tr>
         {% endfor %}
     </tbody>
 </table>

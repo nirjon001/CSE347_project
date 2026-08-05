@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Notifications</h1>
+        <p>Updates on complaints, parcels, invoices, mess-off requests and more.</p>
+    </div>
+    {% if notifications %}
+    <form method="post" action="{{ url_for('notifications_read_all') }}">
+        <button type="submit" class="btn btn-secondary">Mark all as read</button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="section">
+    <div class="notif-list">
+        {% for n in notifications %}
+        <div class="notif-item {{ 'unread' if not n.is_read else '' }}">
+            <div class="notif-body">
+                {% if n.link %}
+                <a class="notif-title" href="{{ url_for('notification_read', notification_id=n.notification_id) }}">{{ n.title }}</a>
+                {% else %}
+                <span class="notif-title">{{ n.title }}</span>
+                {% endif %}
+                <p class="notif-message">{{ n.message }}</p>
+                <span class="notif-time">{{ n.created_at }}</span>
+            </div>
+        </div>
+        {% else %}
+        <p class="empty">You have no notifications.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

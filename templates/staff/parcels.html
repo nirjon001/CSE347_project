@@ -4,7 +4,7 @@
 <div class="page-header">
     <div>
         <h1>Parcels</h1>
-        <p>Receive new parcels and mark them collected when students pick them up.</p>
+        <p>Receive new parcels. Students collect them themselves from the desk.</p>
     </div>
 </div>
 
@@ -36,7 +36,7 @@
     <h2>All Parcels</h2>
     <table>
         <thead>
-            <tr><th>ID</th><th>Student</th><th>Received</th><th>Received By</th><th>Status</th><th>Collected By</th><th>Collected At</th><th>Action</th></tr>
+            <tr><th>ID</th><th>Student</th><th>Received</th><th>Received By</th><th>Status</th><th>Collected By</th><th>Collected At</th></tr>
         </thead>
         <tbody>
             {% for p in parcels %}
@@ -51,18 +51,9 @@
                 </td>
                 <td>{{ p.collected_by or '-' }}</td>
                 <td>{{ p.collected_at or '-' }}</td>
-                <td>
-                    {% if p.status == 'Arrived' %}
-                    <form method="post">
-                        <input type="hidden" name="action" value="collect">
-                        <input type="hidden" name="parcel_id" value="{{ p.parcel_id }}">
-                        <button type="submit" class="btn btn-success btn-sm">Mark Collected</button>
-                    </form>
-                    {% else %}<span class="muted">Done</span>{% endif %}
-                </td>
             </tr>
             {% else %}
-            <tr><td colspan="8" class="empty">No parcels recorded.</td></tr>
+            <tr><td colspan="7" class="empty">No parcels recorded.</td></tr>
             {% endfor %}
         </tbody>
     </table>

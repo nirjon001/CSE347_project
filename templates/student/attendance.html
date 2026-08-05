@@ -5,7 +5,7 @@
 <div class="page-header">
     <div>
         <h1>My Attendance</h1>
-        <p>Mark your attendance for today. Being "Present" requires you to be inside the selected hostel's geo-fence.</p>
+        <p>Mark your attendance for today. Being "Present" requires you to be inside your hostel's geo-fence.</p>
     </div>
 </div>
 
@@ -21,26 +21,12 @@
     <form id="attendance-form" method="post">
         <input type="hidden" name="lat" id="lat">
         <input type="hidden" name="lng" id="lng">
-        <div class="form-row">
-            <div class="form-group">
-                <label for="hostel_id">Workplace hostel</label>
-                <select id="hostel_id" name="hostel_id" required>
-                    {% for h in hostels %}
-                    <option value="{{ h.hostel_id }}"
-                            {% if h.lat is not none and h.lng is not none %}
-                            data-lat="{{ h.lat }}" data-lng="{{ h.lng }}"
-                            data-radius="{{ h.radius_m }}" data-name="{{ h.hostel_name }}"
-                            {% endif %}>{{ h.hostel_name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="status">Today's status</label>
-                <select id="status" name="status">
-                    <option value="Present">Present (location-based)</option>
-                    <option value="Leave">Leave</option>
-                </select>
-            </div>
+        <div class="form-group">
+            <label for="status">Today's status</label>
+            <select id="status" name="status">
+                <option value="Present">Present (location-based)</option>
+                <option value="Leave">Leave</option>
+            </select>
         </div>
         <p class="muted" id="geo-status">Press the button below to fetch your location before submitting.</p>
         <button type="button" class="btn btn-secondary" id="geo-btn">Use my location</button>
@@ -48,11 +34,16 @@
     </form>
 </div>
 
+{% if student and student.hostel_id and student.lat is not none %}
 <div class="section">
-    <h2>Workplace Area</h2>
-    <p class="muted">The blue circle shows the selected hostel's geo-fence. Your location appears as a draggable marker.</p>
-    <div id="attendance-map" class="map-canvas" style="display: none;"></div>
+    <h2>Your Hostel Area</h2>
+    <p class="muted">
+        {{ student.hostel_name }} — geo-fence is {{ student.radius_m }} m around
+        ({{ student.lat }}, {{ student.lng }}).
+    </p>
+    <div id="attendance-map" class="map-canvas" data-lat="{{ student.lat }}" data-lng="{{ student.lng }}" data-radius="{{ student.radius_m }}" data-name="{{ student.hostel_name }}"></div>
 </div>
+{% endif %}
 
 <div class="section">
     <h2>Attendance History</h2>
@@ -80,56 +71,24 @@
 <script>
 (function () {
     var mapEl = document.getElementById('attendance-map');
-    var hostelSelect = document.getElementById('hostel_id');
+    var hostel = null;
     var map = null;
-    var fence = null;
-    var fenceMarker = null;
     var userMarker = null;
     var userAccuracy = null;
     var distLine = null;
-    var currentHostel = null;
 
-    if (mapEl && window.L && hostelSelect) {
-        function currentHostelData() {
-            var opt = hostelSelect.selectedOptions[0];
-            if (!opt || !opt.dataset.lat) return null;
-            return {
-                id: opt.value,
-                lat: parseFloat(opt.dataset.lat),
-                lng: parseFloat(opt.dataset.lng),
-                radius: parseFloat(opt.dataset.radius),
-                name: opt.dataset.name
-            };
-        }
-
-        function drawFence() {
-            var h = currentHostelData();
-            if (!h) {
-                mapEl.style.display = 'none';
-                currentHostel = null;
-                return;
-            }
-            currentHostel = h;
-            mapEl.style.display = '';
-            if (!map) {
-                map = L.map('attendance-map').setView([h.lat, h.lng], 16);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '&copy; OpenStreetMap contributors'
-                }).addTo(map);
-            }
-            if (fence) map.removeLayer(fence);
-            if (fenceMarker) map.removeLayer(fenceMarker);
-            fence = L.circle([h.lat, h.lng], { radius: h.radius, color: '#1d6fb8', fillOpacity: 0.12 }).addTo(map);
-            fenceMarker = L.marker([h.lat, h.lng]).addTo(map).bindPopup(h.name).openPopup();
-            map.setView([h.lat, h.lng], 16);
-            if (userMarker) {
-                map.fitBounds(L.latLngBounds([h.lat, h.lng], userMarker.getLatLng()).pad(0.25));
-            }
-        }
-
-        hostelSelect.addEventListener('change', drawFence);
-        drawFence();
+    if (mapEl && window.L) {
+        var lat = parseFloat(mapEl.dataset.lat);
+        var lng = parseFloat(mapEl.dataset.lng);
+        var radius = parseFloat(mapEl.dataset.radius);
+        hostel = { lat: lat, lng: lng, radius: radius, name: mapEl.dataset.name };
+        map = L.map('attendance-map').setView([lat, lng], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        L.circle([lat, lng], { radius: radius, color: '#1d6fb8', fillOpacity: 0.12 }).addTo(map);
+        L.marker([lat, lng]).addTo(map).bindPopup(hostel.name).openPopup();
     }
 
     function haversine(lat1, lng1, lat2, lng2) {
@@ -143,7 +102,7 @@
     }
 
     function showUserOnMap(lat, lng, accuracy) {
-        if (!map || !currentHostel) return;
+        if (!map || !hostel) return;
         if (!userMarker) {
             userMarker = L.marker([lat, lng], { draggable: true }).addTo(map).bindPopup('Your location');
             userMarker.on('dragend', function () {
@@ -161,11 +120,12 @@
             }
         }
         if (!distLine) {
-            distLine = L.polyline([[currentHostel.lat, currentHostel.lng], [lat, lng]], { color: '#d43f3f', weight: 2, dashArray: '6,4' }).addTo(map);
+            distLine = L.polyline([[hostel.lat, hostel.lng], [lat, lng]], { color: '#d43f3f', weight: 2, dashArray: '6,4' }).addTo(map);
         } else {
-            distLine.setLatLngs([[currentHostel.lat, currentHostel.lng], [lat, lng]]);
+            distLine.setLatLngs([[hostel.lat, hostel.lng], [lat, lng]]);
         }
-        map.fitBounds(L.latLngBounds([currentHostel.lat, currentHostel.lng], [lat, lng]).pad(0.25));
+        map.fitBounds(L.latLngBounds([hostel.lat, hostel.lng], [lat, lng]).pad(0.25));
+        map.flyTo(map.getCenter(), Math.max(map.getZoom(), 15));
     }
 
     var form = document.getElementById('attendance-form');
@@ -175,20 +135,15 @@
         function setGeo(lat, lng, accuracy) {
             document.getElementById('lat').value = lat;
             document.getElementById('lng').value = lng;
-            var h = currentHostelData ? currentHostelData() : null;
-            if (!h) {
-                if (statusEl) statusEl.textContent = 'Location captured. Select a hostel to see the geo-fence.';
-                return;
-            }
             showUserOnMap(lat, lng, accuracy || 0);
-            if (statusEl) {
-                var dist = haversine(lat, lng, h.lat, h.lng);
+            if (statusEl && hostel) {
+                var dist = haversine(lat, lng, hostel.lat, hostel.lng);
                 var accNote = (accuracy || 0) > 0 ? ' (accuracy \u00b1' + Math.round(accuracy) + ' m)' : '';
-                if (dist <= h.radius) {
-                    statusEl.textContent = 'Inside the ' + h.radius + ' m geo-fence (' + Math.round(dist) + ' m from centre). Present will be accepted.' + accNote;
+                if (dist <= hostel.radius) {
+                    statusEl.textContent = 'Inside the ' + hostel.radius + ' m geo-fence (' + Math.round(dist) + ' m from centre). Present will be accepted.' + accNote;
                     statusEl.className = 'muted badge-green-soft';
                 } else {
-                    statusEl.textContent = 'Outside the ' + h.radius + ' m geo-fence (' + Math.round(dist) + ' m from centre). Present will be rejected.' + accNote;
+                    statusEl.textContent = 'Outside the ' + hostel.radius + ' m geo-fence (' + Math.round(dist) + ' m from centre). Present will be rejected.' + accNote;
                     statusEl.className = 'muted badge-red-soft';
                 }
             }
