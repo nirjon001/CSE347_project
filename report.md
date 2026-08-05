@@ -107,7 +107,7 @@ app.secret_key = SECRET_KEY
 ```
 
 - Creates the Flask application object and turns on sessions.
-- `@app.context_processor` injects `session_role` and `session_username` into **every template**, which the navbar uses to show the right menu for each role.
+- `@app.context_processor` injects `session_role`, `session_username`, and the notification **`unread_count`** into **every template**, which the left sidebar uses to show the right menu for each role and the notification bell badge.
 
 #### The three security helpers
 
@@ -136,6 +136,21 @@ A decorator is a "wrapper" function: `@login_required` above a route means "run 
 
 **`/change-password`** — implements `User.changePassword(oldPwd, newPwd)` from the class diagram. Checks the old password, confirms the two new ones match, then writes a fresh hash with `generate_password_hash()`.
 
+#### The notification system
+
+Every role gets an in-app notification feed. The bell icon in the sidebar footer shows an unread-count badge (via `unread_count` from the context processor).
+
+| Helper / route | What it does |
+|---|---|
+| `notify_user(user_id, ...)` | Inserts one `notifications` row for a user |
+| `notify_managers(...)` | Sends the same notification to **every** manager (used for new complaints, mess-off requests, feedback, parcel collections) |
+| `notify_student(id, ...)` / `notify_staff(id, ...)` | Sends to one student/staff member via their `user_id` |
+| `/notifications` | Lists the logged-in user's notifications, newest first; unread ones are highlighted |
+| `/notifications/read/<id>` | Clicking a notification marks it read and follows its `link` |
+| `/notifications/read-all` | Marks everything read |
+
+Automatic triggers: complaint status change → student; new invoice → student; mess-off decision → student; violation recorded (with the notify checkbox) → student or staff (custom text optional); violation resolved → target; staff receives a parcel → student; staff registers a visitor → student; student collects a parcel → receiving staff + all managers. The manager can also send a **manual free-text notice** to any student or staff member — either from the **Send Notice** tab or per violation row (see `/manager/violations` below).
+
 #### Manager routes (Manager class methods)
 
 | URL | Class method it maps to | What it does |
@@ -144,17 +159,20 @@ A decorator is a "wrapper" function: `@login_required` above a route means "run 
 | `/manager/students` | `viewStudents` | Lists all students joined with their username and room |
 | `/manager/students/register` | `registerStudent()` | Creates a `users` row (role=student, hashed password) then a `students` row — two inserts in a transaction-like sequence |
 | `/manager/students/delete/<id>` | `deleteStudent(id)` | Deletes the user (ON DELETE CASCADE removes the student row), and if they had a room, **returns the bed** by incrementing `available_beds` (see trigger note in §6) |
-| `/manager/rooms` | `viewRooms()` | Shows each hostel, each room, bed counts and current occupants |
-| `/manager/hostels/add` | — | Add a **new hostel** (name + location); `total_rooms` starts at 0 |
+| `/manager/rooms` | `viewRooms()` | Shows each hostel (with its gender), each room, bed counts and current occupants |
+| `/manager/hostels/add` | — | Add a **new hostel** (name + location + **gender** + lat/lng/radius for the attendance geo-fence). A Leaflet map offers **both options**: drop/pin the location on the map (click/drag/"Locate me", with optional free OpenStreetMap reverse-geocoding that auto-fills the address) or type the coordinates manually; `total_rooms` starts at 0. Saving is rejected with a friendly flash if **another hostel already uses the same address** (`_hostel_same_address()`), so two buildings can't share one location |
+| `/manager/hostels/edit/<id>` | `editHostel()` | Edit every field from the add form (name, location, gender, coords, radius) with the same map. Changing the **gender is blocked** while students are allocated to that hostel. The duplicate-address check also applies but **excludes the hostel being edited**, so keeping your own address still saves |
+| `/manager/hostels/delete/<id>` | `deleteHostel()` | Delete a hostel (rooms cascade). **Blocked** while any student is still allocated; the hostel list page shows the Edit/Delete buttons |
 | `/manager/rooms/add` | — | Add a room with a **custom bed capacity** (any number ≥ 1) to any hostel; rejects duplicates and zero capacity |
-| `/manager/rooms/allocate` | `allocateRoom()` | The Room Allocation sequence diagram #3. Uses `SELECT ... FOR UPDATE` to lock the room row, refuses allocation if `available_beds <= 0`, else decrements beds and sets the student's `room_id` |
-| `/manager/complaints` | `viewComplaint` / `resolveComplaint` | Lists complaints with student+room; a form updates status to Pending/In Progress/Resolved |
-| `/manager/invoices` | `generateInvoice()` | Creates a new invoice for a student with amount + due date |
+| `/manager/rooms/allocate` | `allocateRoom()` | The Room Allocation sequence diagram #3. Uses `SELECT ... FOR UPDATE` to lock the room row, refuses allocation if `available_beds <= 0` **or if the student's gender doesn't match the hostel's gender**, else decrements beds and sets the student's `room_id`. The DB trigger below is the backstop |
+| `/manager/complaints` | `viewComplaint` / `resolveComplaint` | Lists complaints with student+room; a form updates status to Pending/In Progress/Resolved — **and notifies the student** of the new status |
+| `/manager/invoices` | `generateInvoice()` | Creates a new invoice for a student with amount + due date — **and notifies the student** |
 | `/manager/invoices/toggle/<id>` | `updatePaymentStatus()` | Flips an invoice between Paid/Unpaid |
 | `/manager/attendance` | `recordStudentAttendance()` `recordStaffAttendance()` | Records attendance; `ON DUPLICATE KEY UPDATE` lets you overwrite the same (student, date) instead of erroring |
 | `/manager/mess-menu` | `updateMessMenu()` | Upserts a menu item per (day, meal) slot |
-| `/manager/violations` | `recordViolation()` / `resolveViolation()` | Inserts a violation for a student **or** a staff member — exactly one of the two, matching the CHECK constraint; each row shows Open/Resolved status |
-| `/manager/violations/resolve/<id>` | `resolveViolation(id)` | Marks a violation **Resolved** and stores `resolved_at` (clears it from the open-violations count) |
+| `/manager/violations` | `recordViolation()` / `resolveViolation()` | The page is organised into **three tabs**: **Record Violation** (student or staff target, description, optional notify checkbox + custom message), **Send Notice** (free-text manual notice to any student or staff member), and **All Violations** (open/resolved filter chips + per-row **Notify** expand and **Resolve** for open rows). The POST handler dispatches on a hidden `action` field — `record`, `notice`, or `row_notify` — which keeps every workflow on this single URL |
+| `/manager/violations/resolve/<id>` | `resolveViolation(id)` | Marks a violation **Resolved**, stores `resolved_at`, and **notifies the violator** |
+| `/manager/notify` | — | Backward-compatible alias of the **Send Notice** tab — sends free-text notifications to any student or staff member |
 | `/manager/feedback` | — | Manager **views** all student feedback (with student names) |
 | `/manager/mess-off` | `approveMessOff()` | Manager **approves or rejects** pending mess-off requests (the pending count on the dashboard drops) |
 | `/manager/parcels` | — | Manager **views** all parcels with who received them and who/when collected them |
@@ -174,7 +192,8 @@ A decorator is a "wrapper" function: `@login_required` above a route means "run 
 | `/student/mess-off` | `applyMessOff()` | Request mess-off with start/end date (status Pending) |
 | `/student/feedback` | `submitFeedback()` | Submit and view own feedback |
 | `/student/in-out` | `submitLeaveRequest()` | Record a departure (out_date, reason); status starts as Out |
-| `/student/parcels` | `viewParcels` | List own parcels, the staff member who received it, and the collected date/who handed it over |
+| `/student/parcels` | `viewParcels` | List own parcels, the staff member who received it, and the collected date; **students collect their own parcels** — the Collect button sets `collected_by_student` + `collected_at` and notifies the receiving staff and managers |
+| `/student/attendance` | `recordAttendance()` | **Geo-fenced attendance** — the browser fetches the student's GPS position and a free Leaflet/OSM map shows their hostel's radius circle plus their own (draggable) location marker with an inside/outside badge; the captured fix uses `enableHighAccuracy` + `maximumAge: 0` and shows a **±accuracy estimate** (with a dashed accuracy circle) so coarse desktop (IP/WiFi-based) fixes are visibly unreliable; `Present` is only recorded if the haversine distance to the hostel is within `radius_m` (Leave needs no location) |
 
 #### Staff routes (Staff class methods)
 
@@ -182,9 +201,9 @@ A decorator is a "wrapper" function: `@login_required` above a route means "run 
 |---|---|---|
 | `/staff` | — | Dashboard: visitors today, arrived parcels, own attendance |
 | `/staff/visitors` | `registerVisitor()` | The front-desk workflow — staff registers a visitor against a student; `registered_by_staff` stores the staff id |
-| `/staff/parcels` | `updateParcelStatus()` | **Receive** a new parcel (records which staff member took it in) and **mark an Arrived parcel as Collected** (records `collected_at` + which staff member handed it over) |
+| `/staff/parcels` | `updateParcelStatus()` | **Receive** a new parcel (records which staff member took it in, **notifies the student**); staff no longer mark parcels collected — students do that themselves |
 | `/staff/in-out` | — | Records a student's **return** — for any record currently `Out`, sets the `in_date` and status to Returned |
-| `/staff/attendance` | `recordAttendance()` | Staff marks own Present/Leave for today (upsert) |
+| `/staff/attendance` | `recordAttendance()` | **Geo-fenced attendance** — staff pick their workplace hostel, the browser fetches their GPS position, and a Leaflet/OSM map shows the selected hostel's radius circle plus their own location marker with an inside/outside badge and the **±accuracy** of the fix; `Present` is only recorded inside that hostel's `radius_m` circle (haversine); Leave needs no location |
 
 #### The final block
 
@@ -204,7 +223,7 @@ Flask uses **Jinja2** templates. A template is HTML with `{{ variable }}` (print
 ### `base.html` — the shared layout
 Every other page says `{% extends "base.html" %}` at the top. That means base.html provides:
 - The `<head>` with the stylesheet link.
-- The **navbar** — and here is the clever part: it reads `session_role` and shows different menu links for manager / student / staff, plus a user chip (initial avatar + username + colour-coded role badge) and Logout.
+- The **left sidebar** — when logged in, base.html renders a fixed 230px sidebar (`<aside class="sidebar">`) with the `HostelMS` brand on top, a scrolling menu in the middle, and a footer at the bottom. A `{% macro icon(name) %}` emits small inline SVG icons (Feather-style, no icon library) next to every link. It reads `session_role` and shows different menu links for manager / student / staff, plus a user chip (initial avatar + username + colour-coded role badge), a **Notifications link with an unread-count bell badge**, Change Password, and Logout. The body gets a `has-sidebar` class so the content area (`margin-left: 250px`) clears the fixed sidebar.
 - **Flash messages** — `get_flashed_messages()` displays the green/red/yellow notices produced by `flash()` in `app.py`.
 - The footer (`© 2026 Hostel Management System (HMS). All rights reserved.`).
 - The `<script>` tag for `main.js`.
@@ -237,36 +256,38 @@ When submitted, the browser POSTs to `/manager/students/register`, the route rea
 `complaints` is the list the route passed into `render_template()`. Each item `c` is a row-dictionary whose keys are the SQL column names.
 
 ### Status badges
-The `badge` classes color-code status: green=Paid/Resolved/Collected/Present/Approved, yellow=Pending/Unpaid/Arrived/Out, red=Overdue/Absent/Rejected, blue=In Progress/Leave.
+The `badge` classes color-code status: green=Paid/Resolved/Collected/Present/Approved, yellow=Pending/Unpaid/Arrived/Out, red=Overdue/Absent/Rejected, blue=In Progress/Leave. A red `.notif-badge` on the sidebar bell shows the unread-notification count.
 
 ---
 
 ## 5. Static files (`static/`)
 
-- `css/style.css` — one stylesheet for the whole app. CSS variables at the top (`:root { --primary: ... }`) define the colour theme, and `.card`, `.table`, `.form-group`, `.btn`, `.badge`, `.flashes` classes are reused everywhere.
-- `js/main.js` — a tiny script: any form with `data-confirm="..."` shows a browser confirm dialog before submitting. This powers the "Delete student?" confirmation buttons. That is the only JavaScript needed, which keeps the app beginner-friendly.
+- `css/style.css` — one stylesheet for the whole app. CSS variables at the top (`:root { --primary: ... }`) define the colour theme, and `.card`, `.table`, `.form-group`, `.btn`, `.badge`, `.flashes` classes are reused everywhere. Added for the new features: `.notif-*` (notification feed + bell badge), `.map-canvas` (Leaflet container), `.check-label`, and `.tabs`/`.tab-btn`/`.tab-panel`/`.chip`/`.row-notify` (violations tabs + filter chips + inline notify).
+- `js/main.js` — forms with `data-confirm="..."` show a browser confirm dialog before submitting (the "Delete student?" buttons). New: the **gender filter** — on the allocate page it hides rooms whose hostel gender doesn't match the selected student.
 
 ---
 
 ## 6. Database files
 
 ### `hostel_management_schema.sql`
-Creates `hostel_management` and the 17 tables exactly matching the UML class diagram:
+Creates `hostel_management` and the 18 tables exactly matching the UML class diagram:
 - `users` (base / superclass) + `managers`, `staff`, `students` (subtype tables, each linked by a `user_id` FK) — this is **table-per-subtype inheritance**.
-- Feature tables: `complaints`, `invoices`, `student_attendance`, `staff_attendance`, `visitors`, `parcels`, `mess_off_requests`, `feedback`, `student_in_out`, `violations`, `mess_menu`, plus `hostels` and `rooms`.
+- Feature tables: `complaints`, `invoices`, `student_attendance`, `staff_attendance`, `visitors`, `parcels`, `mess_off_requests`, `feedback`, `student_in_out`, `violations`, `mess_menu`, `notifications`, plus `hostels` and `rooms`.
 - `violations` has a `CHECK` constraint so a violation belongs to exactly **one** of student/staff, plus a `status` ENUM (`Open`/`Resolved`) and `resolved_at`.
-- `parcels` tracks `received_by_staff`, `collected_at` and `collected_by_staff` (both staff FKs are `ON DELETE SET NULL`).
-- Indexes speed up common lookups (e.g. `idx_complaints_student`).
+- `hostels` carries a `gender` ENUM (`Male`/`Female` — one gender per building), plus `lat`/`lng`/`radius_m` for the attendance geo-fence.
+- `parcels` tracks `received_by_staff` (SET NULL on staff delete) and `collected_at` + `collected_by_student` (the student collects their own parcel).
+- `notifications` stores the per-user feed: `user_id` FK, `title`, `message`, optional `link`, `is_read` (default 0), `created_at`.
+- Indexes speed up common lookups (e.g. `idx_complaints_student`, `idx_notifications_user`).
 - The script sets **strict SQL mode** (`STRICT_TRANS_TABLES`) so ENUM/CHECK columns reject bad data instead of silently storing an empty string — the app's `db.py` does the same on every connection.
-- A **trigger** `trg_student_delete_bed` frees a bed when a `students` row is deleted directly.
+- **Triggers**: `trg_student_delete_bed` frees a bed when a `students` row is deleted directly, and `trg_student_room_gender` / `trg_student_room_gender_upd` reject inserting **or** moving a student into a room of the opposite-gender hostel (the app checks this in code first; the trigger is the database-level backstop).
 
 > MariaDB note: triggers do **not** fire on cascaded deletes, so when the app deletes a student through the `users` row it increments `available_beds` explicitly in code; the trigger covers direct `students`-row deletions. Both paths keep the invariant *occupied + available = total*.
 
 ### `migrations.sql`
-For anyone who already loaded the **old** schema: run it once to add the new `parcels` columns, the violation columns, and the trigger without losing data. It is **idempotent** — every statement is guarded (`ADD COLUMN IF NOT EXISTS` for columns, an `information_schema` check for the two foreign keys, `DROP TRIGGER IF EXISTS` for the trigger) — so it is safe to run any number of times, even on an already-updated database (it simply does nothing).
+For anyone who already loaded the **old** schema: run it once to upgrade without losing data. It is **idempotent** — columns use `ADD COLUMN IF NOT EXISTS`, foreign-key and index changes are wrapped in `information_schema`-guarded stored procedures (MariaDB has no `ADD CONSTRAINT IF NOT EXISTS`), triggers use `DROP TRIGGER IF EXISTS`, and the hostel-gender backfill runs only on a freshly added NULL column — so it is safe to run any number of times, even on an already-updated database (it simply does nothing).
 
 ### `seed_data.sql`
-Inserts demo records (9 users, 1 manager, 3 staff, 2 hostels with varied capacities, 5 students, menu, invoices, complaints, feedback, parcels, violations, mess-off and in/out records). Passwords are stored as **scrypt hashes**, never plain text.
+Inserts demo records (9 users, 1 manager, 3 staff, 2 hostels — Main Hostel (Male) and Girls Hostel (Female) with Dhaka-area GPS coords and a 50 m attendance radius — 5 students, menu, invoices, complaints, feedback, parcels, violations, mess-off and in/out records). Passwords are stored as **scrypt hashes**, never plain text.
 
 ---
 
@@ -276,6 +297,9 @@ Inserts demo records (9 users, 1 manager, 3 staff, 2 hostels with varied capacit
 2. **SQL injection prevention** — every query uses `%s` placeholders with separate parameters (see `db.py`).
 3. **Session-based auth** — pages are protected by `login_required` and `role_required`, so a student cannot reach manager URLs by guessing them.
 4. **No secrets in the repo** — the `SECRET_KEY` is in `config.py` only for a course project; a real deployment would read it from an environment variable.
+5. **Data ownership** — notification reads/queries always filter by `session['user_id']`, so one user can never see or mark-read another's notifications; parcel collection only works for the parcel's own student.
+6. **Geo-fenced attendance** — the location check (haversine vs the hostel's `lat`/`lng`/`radius_m`) happens on the **server** with coordinates the browser sends; the Leaflet map is only a visual aid. The browser requests a fresh fix (`enableHighAccuracy`, `maximumAge: 0`) and the UI shows the **reported ±accuracy** — important because desktop browsers fall back to IP/WiFi triangulation (no GPS), which can be off by hundreds of metres. Note: browsers require HTTPS (or `localhost`) for the Geolocation API in production.
+7. **Save hardening on hostel forms** — `location`/`hostel_name` are truncated to the column widths in `_hostel_form()`, the insert/update is wrapped in `try/except mysql.connector.Error` (the error is flashed instead of crashing), and a global `@app.errorhandler(500)` returns a friendly page — so a bad value (e.g., a very long reverse-geocoded address) can never drop the dev server's connection. This matters because `db.py` forces `STRICT_TRANS_TABLES`, so an over-length `VARCHAR` would otherwise raise an unhandled error 1406.
 
 ---
 
@@ -298,15 +322,16 @@ Every class method from `class_diagram.svg` has a matching code route:
 | `Manager.recordViolation()` / `viewViolation()` / `resolveViolation()` | `/manager/violations` / `/manager/violations/resolve/<id>` |
 | `Manager.viewVisitorLogs()` | `/manager/visitors` |
 | `Staff.registerVisitor()` | `/staff/visitors` |
-| `Staff.updateParcelStatus()` | `/staff/parcels` (receive + collect) |
-| `Staff.recordAttendance()` | `/staff/attendance` |
+| `Staff.updateParcelStatus()` | `/staff/parcels` (receive; collection is student-driven) |
+| `Staff.recordAttendance()` | `/staff/attendance` (geo-fenced) |
 | `Student.viewProfile()` / `viewRoom()` | `/student/profile` / `/student/room` |
 | `Student.submitComplaint()` | `/student/complaints` |
 | `Student.viewInvoice()` | `/student/invoices` |
 | `Student.applyMessOff()` | `/student/mess-off` |
 | `Student.submitFeedback()` | `/student/feedback` |
 | `Student.submitLeaveRequest()` | `/student/in-out` |
-| `Student.viewParcels` | `/student/parcels` |
+| `Student.viewParcels` | `/student/parcels` (self-collection) |
+| `Student.recordAttendance()` | `/student/attendance` (geo-fenced) |
 
 The three **required sequence diagrams** map as:
 1. **Login/Authentication** → `/login` + session + role redirect.

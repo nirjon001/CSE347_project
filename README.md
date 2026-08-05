@@ -5,9 +5,13 @@ A web-based hostel management system built for **CSE347: Information System Anal
 ## Features
 
 - **Role-based login** — separate dashboards for Manager, Student, and Staff (Flask sessions + hashed passwords)
-- **Manager**: register/delete students, allocate rooms, add hostels & rooms with custom bed capacity, manage complaints & invoices, record attendance, update the mess menu, record & resolve violations, view student feedback, approve/reject mess-off requests, view all parcels, view visitor logs, manage & delete staff
-- **Student**: view profile & room, submit complaints, view invoices, apply mess-off, give feedback, record in/out, check parcels (who received them, when collected)
-- **Staff**: register visitors at the front desk, receive & hand over parcels (with audit trail), record student returns, record own attendance
+- **Gender-separated hostels** — each hostel is Male or Female; room allocation (and the database) refuses to place a student in an opposite-gender hostel
+- **Notification system** — a bell with an unread-count badge and a full notification page; students/staff get automatic alerts (complaint updates, new invoices, parcel arrivals, visitor arrivals, violation notices, mess-off decisions) and managers can send free-text notices
+- **Geo-fenced attendance** — students and staff mark "Present" only from inside their hostel's GPS radius (browser location + Leaflet/OpenStreetMap, no paid API keys). Managers set the hostel's location by dropping a pin on a map or typing coordinates, and the map shows your live position with an accuracy estimate (how close ± the fix is) and an inside/outside check
+- **Student parcel self-collection** — staff receive parcels (auto-notifying the student); students pick them up with one click, and every parcel keeps an audit trail (who received it, who collected it, when)
+- **Manager**: register/delete students, allocate rooms, add/edit/delete hostels (map pin or typed coordinates; duplicate addresses are rejected) & add rooms with custom bed capacity, manage complaints & invoices, record attendance, update the mess menu, record & resolve violations (tabbed page: record / send notice / browse all with Open-Resolved filters and per-row notify), view student feedback, approve/reject mess-off requests, view all parcels, view visitor logs, manage & delete staff
+- **Student**: view profile & room, submit complaints, view invoices, apply mess-off, give feedback, record in/out, check & collect parcels (who received them, when collected), mark attendance
+- **Staff**: register visitors at the front desk, receive parcels (notifies the student), record student returns, record own (geo-fenced) attendance
 - **Security**: scrypt password hashing, parameterized SQL (SQL-injection safe), role-guarded routes, strict SQL mode so invalid data is rejected
 
 ## Tech Stack
@@ -39,10 +43,10 @@ The app needs the schema plus some demo data. There are two ways — pick one.
 **Option A — phpMyAdmin (easiest):**
 1. Open `http://localhost/phpmyadmin`
 2. Click **Import** → **Choose File**
-3. Select `hostel_management_schema.sql` → **Go** (creates the `hostel_management` database + all 17 tables)
+3. Select `hostel_management_schema.sql` → **Go** (creates the `hostel_management` database + all 18 tables)
 4. Import `seed_data.sql` the same way (adds demo accounts & records)
 
-> **Already used the old version?** Run `migrations.sql` instead of re-importing the schema — it adds the new columns/foreign keys/trigger without wiping your data. It is safe to run any time (it skips anything that already exists, so re-running causes no errors).
+> **Already used the old version?** Run `migrations.sql` instead of re-importing the schema — it adds the new columns/tables/foreign keys/triggers without wiping your data. It is safe to run any time (it skips anything that already exists, so re-running causes no errors).
 
 **Option B — command line:**
 
@@ -85,10 +89,11 @@ You should see `Running on http://127.0.0.1:5000`. Open that URL in a browser an
 
 - Log in as **manager** — you should see the Manager dashboard with student/room/complaint counts.
 - Try **Register Student** → then **Allocate Room** to that student.
-- Try **Add Hostel** then **Add Room** with a custom capacity, and allocate a student into it.
-- Try **Violations → Resolve**, **Mess Off → Approve/Reject**, and open **Feedback** / **Parcels** views.
-- Log in as **student1** to see the student side (complaints, invoices, mess menu, parcels).
-- Log in as **staff1** to register a visitor, receive/collect a parcel, and mark a student as returned.
+- Try **Add Hostel** (with gender + location coords) then **Add Room** with a custom capacity, and allocate a student into it (opposite-gender rooms are hidden/refused).
+- Try **Violations → Record** with the notify checkbox, **Mess Off → Approve/Reject**, and open **Feedback** / **Parcels** views.
+- Click the **bell (Notifications)** in the sidebar — the unread count should reflect the notices above.
+- Log in as **student1** to see the student side (complaints, invoices, mess menu, parcels with a **Collect** button, geo-fenced **Attendance**).
+- Log in as **staff1** to register a visitor, receive a parcel, and mark a student as returned.
 
 ## Demo Accounts
 
@@ -115,6 +120,7 @@ You should see `Running on http://127.0.0.1:5000`. Open that URL in a browser an
 | `Address already in use` when running the app | Another `python app.py` is already running, or port 5000 is busy. Stop it, or run `python app.py` on another port. |
 | Pages load but login always fails | The seed data wasn't imported. Re-run `seed_data.sql` (step 3). |
 | Database `hostel_management` not found | The schema wasn't imported. Re-run `hostel_management_schema.sql` (step 3). |
+| Attendance says "outside the area" | The browser's GPS is farther than the hostel's `radius_m` from its `lat`/`lng`. On a deployed server the browser may block geolocation unless the site is HTTPS — `localhost` always works. |
 
 ## Project Structure
 
@@ -126,13 +132,14 @@ CSE347_project/
 ├── db.py                           # Parameterized query/execute helpers
 ├── requirements.txt                # Python dependencies
 │
-├── hostel_management_schema.sql    # MySQL schema (17 tables + trigger)
-├── migrations.sql                  # Upgrades an old schema to the current one
+├── hostel_management_schema.sql    # MySQL schema (18 tables + 3 triggers)
+├── migrations.sql                  # Upgrades an old schema to the current one (idempotent)
 ├── seed_data.sql                   # Demo data + accounts
 │
 ├── templates/                      # Jinja2 HTML pages
-│   ├── base.html                   #   shared layout (navbar, flashes, footer)
+│   ├── base.html                   #   shared layout (sidebar + bell badge, flashes, footer)
 │   ├── home.html                   #   landing page
+│   ├── notifications.html          #   per-user notification feed
 │   ├── auth/                       #   login + change-password pages
 │   │   ├── login.html
 │   │   └── change_password.html
@@ -140,15 +147,15 @@ CSE347_project/
 │   │   ├── dashboard.html
 │   │   ├── students.html
 │   │   ├── register_student.html
-│   │   ├── rooms.html              #   shows hostels + rooms, add buttons
-│   │   ├── add_hostel.html
+│   │   ├── rooms.html              #   hostel list (edit/delete) + rooms, add buttons
+│   │   ├── add_hostel.html         #   add OR edit hostel: map pin or typed coords
 │   │   ├── add_room.html
-│   │   ├── allocate_room.html
+│   │   ├── allocate_room.html      #   gender-filtered dropdowns
 │   │   ├── complaints.html
 │   │   ├── invoices.html
 │   │   ├── attendance.html
 │   │   ├── mess_menu.html
-│   │   ├── violations.html         #   status + resolve button
+│   │   ├── violations.html         #   tabs: record / send notice / browse + resolve + row notify
 │   │   ├── feedback.html
 │   │   ├── mess_off.html           #   approve / reject
 │   │   ├── parcels.html
@@ -163,19 +170,20 @@ CSE347_project/
 │   │   ├── mess_off.html
 │   │   ├── feedback.html
 │   │   ├── in_out.html
-│   │   └── parcels.html            #   shows received_by / collected info
+│   │   ├── parcels.html            #   shows received_by + Collect button
+│   │   └── attendance.html         #   geo-fenced + Leaflet map (your location + inside/outside badge)
 │   └── staff/                      #   staff dashboard + feature pages
 │       ├── dashboard.html
 │       ├── visitors.html
-│       ├── parcels.html            #   receive + collect forms
+│       ├── parcels.html            #   receive form
 │       ├── in_out.html             #   mark students returned
-│       └── attendance.html
+│       └── attendance.html         #   geo-fenced + Leaflet map (hostel picker + your location)
 │
 ├── static/                         # Static assets
 │   ├── css/
 │   │   └── style.css               #   stylesheet
 │   └── js/
-│       └── main.js                 #   confirm-dialog helper
+│       └── main.js                 #   confirm dialogs + gender-filtered room dropdown
 │
 ├── report.md                       # Full code walkthrough (how every part works)
 ├── class_diagram (1).svg           # UML class diagram (17 classes)
