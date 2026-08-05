@@ -9,7 +9,7 @@
 </div>
 
 <div class="section">
-    <h2>Generate New Invoice</h2>
+    <h2>Generate Invoices</h2>
     <div class="form-card">
         <form method="post">
             <div class="form-row">
@@ -22,23 +22,21 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="invoice_type">Invoice type</label>
-                    <select id="invoice_type" name="invoice_type" required>
-                        {% for t in invoice_types %}
-                        <option value="{{ t }}">{{ t }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="amount">Amount</label>
-                    <input type="number" step="0.01" min="0" id="amount" name="amount" required>
-                </div>
-                <div class="form-group">
-                    <label for="due_date">Due date</label>
+                    <label for="due_date">Due date (shared)</label>
                     <input type="date" id="due_date" name="due_date" required>
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary">Generate</button>
+            <p class="muted">Fill in an amount for each bill you want to issue — leave the rest empty.</p>
+            <div class="invoice-grid">
+                {% for t in invoice_types %}
+                <div class="invoice-grid-row">
+                    <label for="{{ 'amount_' ~ t|lower|replace(' ', '_') }}">{{ t }}</label>
+                    <input type="number" step="0.01" min="0.01" id="{{ 'amount_' ~ t|lower|replace(' ', '_') }}"
+                           name="{{ 'amount_' ~ t|lower|replace(' ', '_') }}" placeholder="Amount">
+                </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary">Generate Invoices</button>
         </form>
     </div>
 </div>
@@ -64,38 +62,71 @@
 {% endif %}
 
 <div class="section">
-    <h2>All Invoices</h2>
+    <h2>Invoices by Student</h2>
     <table>
         <thead>
-            <tr><th>ID</th><th>Student</th><th>Type</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Action</th></tr>
+            <tr><th></th><th>ID</th><th>Student</th><th>Bills</th><th>Count</th><th>Total</th></tr>
         </thead>
         <tbody>
-            {% for i in invoices %}
-            <tr>
-                <td>{{ i.invoice_id }}</td>
-                <td>{{ i.student_name }}</td>
-                <td>{{ i.invoice_type }}</td>
-                <td>${{ i.amount }}</td>
-                <td>{{ i.due_date }}</td>
-                <td>
-                    {% if i.payment_status == 'Paid' %}<span class="badge badge-green">Paid</span>
-                    {% elif i.payment_status == 'Unpaid' %}<span class="badge badge-yellow">Unpaid</span>
-                    {% else %}<span class="badge badge-red">Overdue</span>{% endif %}
-                </td>
-                <td class="actions-cell">
-                    <form method="post" action="{{ url_for('toggle_invoice', invoice_id=i.invoice_id) }}">
-                        <button type="submit" class="btn btn-ghost btn-sm">
-                            Mark {{ 'Unpaid' if i.payment_status == 'Paid' else 'Paid' }}
-                        </button>
-                    </form>
-                    <a class="btn btn-ghost btn-sm" href="{{ url_for('manager_invoice_print', invoice_id=i.invoice_id) }}" target="_blank">Print</a>
-                    <a class="btn btn-primary btn-sm" href="{{ url_for('manager_invoice_pdf', invoice_id=i.invoice_id) }}">Download PDF</a>
+            {% for g in student_summary %}
+            <tr class="invoice-group" data-group="{{ g.student_id }}">
+                <td><button type="button" class="btn btn-ghost btn-sm group-toggle">&#9656;</button></td>
+                <td>{{ g.first_invoice_id }}</td>
+                <td>{{ g.student_name }}</td>
+                <td>{{ g.types }}</td>
+                <td>{{ g.count }}</td>
+                <td>${{ '%.2f'|format(g.total) }}</td>
+            </tr>
+            <tr class="invoice-detail" data-group="{{ g.student_id }}" hidden>
+                <td colspan="6">
+                    <table class="inner-table">
+                        <thead>
+                            <tr><th>ID</th><th>Type</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Action</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for i in invoices if i.student_id == g.student_id %}
+                            <tr>
+                                <td>{{ i.invoice_id }}</td>
+                                <td>{{ i.invoice_type }}</td>
+                                <td>${{ i.amount }}</td>
+                                <td>{{ i.due_date }}</td>
+                                <td>
+                                    {% if i.payment_status == 'Paid' %}<span class="badge badge-green">Paid</span>
+                                    {% elif i.payment_status == 'Unpaid' %}<span class="badge badge-yellow">Unpaid</span>
+                                    {% else %}<span class="badge badge-red">Overdue</span>{% endif %}
+                                </td>
+                                <td class="actions-cell">
+                                    <form method="post" action="{{ url_for('toggle_invoice', invoice_id=i.invoice_id) }}">
+                                        <button type="submit" class="btn btn-ghost btn-sm">
+                                            Mark {{ 'Unpaid' if i.payment_status == 'Paid' else 'Paid' }}
+                                        </button>
+                                    </form>
+                                    <a class="btn btn-ghost btn-sm" href="{{ url_for('manager_invoice_print', invoice_id=i.invoice_id) }}" target="_blank">Print</a>
+                                    <a class="btn btn-primary btn-sm" href="{{ url_for('manager_invoice_pdf', invoice_id=i.invoice_id) }}">Download PDF</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="7" class="empty">No invoices yet.</td></tr>
+            <tr><td colspan="6" class="empty">No invoices yet.</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+
+<script>
+(function () {
+    document.querySelectorAll('.group-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var tr = btn.closest('tr');
+            var detail = document.querySelector('.invoice-detail[data-group="' + tr.dataset.group + '"]');
+            if (detail) detail.hidden = !detail.hidden;
+            btn.innerHTML = (detail && !detail.hidden) ? '&#9662;' : '&#9656;';
+        });
+    });
+})();
+</script>
 {% endblock %}

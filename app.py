@@ -586,6 +586,16 @@ def manager_complaints():
 INVOICE_TYPES = ('Room Rent', 'Electricity', 'Food', 'Water', 'Other')
 
 
+def _invoice_amount_field(invoice_type):
+    return 'amount_' + invoice_type.lower().replace(' ', '_')
+
+
+def _invoice_notification_message(created, due_date):
+    total = round(sum(a for _, a in created), 2)
+    parts = ', '.join(f'{t} ${a:,.2f}' for t, a in created)
+    return f'New invoices issued: {parts} (total ${total:,.2f}). Due date: {due_date}.'
+
+
 def _invoice_receipt_data(invoice_id):
     return query(
         'SELECT i.*, s.name AS student_name, r.room_no, h.hostel_name, h.location '
@@ -641,29 +651,55 @@ def _invoice_pdf_bytes(invoice):
 def manager_invoices():
     if request.method == 'POST':
         student_id = request.form.get('student_id')
-        amount = request.form.get('amount')
         due_date = request.form.get('due_date')
-        invoice_type = request.form.get('invoice_type', 'Room Rent')
-        if invoice_type not in INVOICE_TYPES:
-            invoice_type = 'Room Rent'
-        execute(
-            'INSERT INTO invoices (student_id, invoice_type, amount, due_date, payment_status) '
-            'VALUES (%s, %s, %s, %s, %s)',
-            (student_id, invoice_type, amount, due_date, 'Unpaid'),
-        )
-        notify_student(
-            student_id,
-            'New invoice',
-            f'A new {invoice_type} invoice of ${amount} was issued. Due date: {due_date}.',
-            '/student/invoices',
-        )
-        flash('Invoice generated.', 'success')
+        created = []
+        bad_types = []
+        for t in INVOICE_TYPES:
+            raw = request.form.get(_invoice_amount_field(t), '').strip()
+            if not raw:
+                continue
+            try:
+                amount = round(float(raw), 2)
+            except ValueError:
+                bad_types.append(t)
+                continue
+            if amount <= 0:
+                bad_types.append(t)
+                continue
+            execute(
+                'INSERT INTO invoices (student_id, invoice_type, amount, due_date, payment_status) '
+                'VALUES (%s, %s, %s, %s, %s)',
+                (student_id, t, amount, due_date, 'Unpaid'),
+            )
+            created.append((t, amount))
+        if not created:
+            if bad_types:
+                flash('No invoices generated — the amount entered for '
+                      f'{", ".join(bad_types)} was not a valid number.', 'danger')
+            else:
+                flash('Enter at least one invoice amount.', 'danger')
+        else:
+            notify_student(
+                student_id,
+                'New invoices',
+                _invoice_notification_message(created, due_date),
+                '/student/invoices',
+            )
+            flash(f'{len(created)} invoice(s) generated for the student.', 'success')
         return redirect(url_for('manager_invoices'))
     invoices = query(
         'SELECT i.*, s.name AS student_name FROM invoices i '
         'JOIN students s ON i.student_id = s.student_id ORDER BY i.invoice_id DESC'
     )
     students = query('SELECT student_id, name FROM students ORDER BY student_id')
+    student_summary = query(
+        'SELECT s.student_id, s.name AS student_name, '
+        'MIN(i.invoice_id) AS first_invoice_id, '
+        'COUNT(*) AS count, SUM(i.amount) AS total, '
+        'GROUP_CONCAT(i.invoice_type ORDER BY i.invoice_id SEPARATOR ", ") AS types '
+        'FROM invoices i JOIN students s ON i.student_id = s.student_id '
+        'GROUP BY s.student_id, s.name ORDER BY first_invoice_id'
+    )
     summary = query(
         'SELECT invoice_type, COUNT(*) AS count, SUM(amount) AS total '
         'FROM invoices GROUP BY invoice_type ORDER BY invoice_type'
@@ -671,7 +707,8 @@ def manager_invoices():
     grand = query('SELECT COUNT(*) AS count, SUM(amount) AS total FROM invoices', one=True)
     return render_template(
         'manager/invoices.html', invoices=invoices, students=students,
-        summary=summary, grand=grand, invoice_types=INVOICE_TYPES,
+        student_summary=student_summary, summary=summary, grand=grand,
+        invoice_types=INVOICE_TYPES,
     )
 
 
