@@ -16,17 +16,32 @@
 <div class="section">
     <h2>Hostels</h2>
     <table>
-        <thead><tr><th>ID</th><th>Name</th><th>Location</th><th>Rooms</th></tr></thead>
+        <thead><tr><th>ID</th><th>Name</th><th>Gender</th><th>Location</th><th>Rooms</th><th>Geo-fence</th><th>Actions</th></tr></thead>
         <tbody>
             {% for h in hostels %}
             <tr>
                 <td>{{ h.hostel_id }}</td>
                 <td>{{ h.hostel_name }}</td>
+                <td>
+                    {% if h.gender == 'Male' %}<span class="badge badge-blue">{{ h.gender }}</span>
+                    {% else %}<span class="badge badge-yellow">{{ h.gender }}</span>{% endif %}
+                </td>
                 <td>{{ h.location or '-' }}</td>
                 <td>{{ h.total_rooms }}</td>
+                <td>
+                    {% if h.lat is not none and h.lng is not none %}
+                        {{ h.radius_m }} m <span class="muted">({{ h.lat }}, {{ h.lng }})</span>
+                    {% else %}<span class="muted">Not set</span>{% endif %}
+                </td>
+                <td>
+                    <a class="btn btn-ghost btn-sm" href="{{ url_for('edit_hostel', hostel_id=h.hostel_id) }}">Edit</a>
+                    <form method="post" action="{{ url_for('delete_hostel', hostel_id=h.hostel_id) }}" data-confirm="Delete hostel '{{ h.hostel_name }}' and all its rooms?" style="display:inline-block;">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </td>
             </tr>
             {% else %}
-            <tr><td colspan="4" class="empty">No hostels yet.</td></tr>
+            <tr><td colspan="7" class="empty">No hostels yet.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -42,7 +57,7 @@
             {% for r in rooms %}
             <tr>
                 <td>{{ r.room_no }}</td>
-                <td>{{ r.hostel_name }}</td>
+                <td>{{ r.hostel_name }} <span class="muted">({{ r.gender }})</span></td>
                 <td>{{ r.total_beds }}</td>
                 <td>{{ r.available_beds }}</td>
                 <td>{{ r.occupants }}</td>

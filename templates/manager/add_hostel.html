@@ -1,23 +1,233 @@
 {% extends "base.html" %}
-{% block title %}Add Hostel{% endblock %}
+{% block title %}{{ 'Edit Hostel' if hostel else 'Add Hostel' }}{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <div class="page-header">
     <div>
-        <h1>Add Hostel</h1>
-        <p>Create a new hostel building.</p>
+        <h1>{{ 'Edit Hostel' if hostel else 'Add Hostel' }}</h1>
+        <p>{{ 'Update the hostel details below.' if hostel else 'Create a new hostel building. You can type the coordinates or pin the location on the map.' }}</p>
     </div>
 </div>
 <div class="form-card">
-    <form method="post">
+    <form method="post" action="{{ url_for('edit_hostel', hostel_id=hostel.hostel_id) if hostel else url_for('add_hostel') }}">
         <div class="form-group">
             <label for="hostel_name">Hostel name</label>
-            <input type="text" id="hostel_name" name="hostel_name" placeholder="e.g. Boys Hostel 2" required>
+            <input type="text" id="hostel_name" name="hostel_name" placeholder="e.g. Boys Hostel 2" value="{{ hostel.hostel_name if hostel else '' }}" required>
         </div>
         <div class="form-group">
-            <label for="location">Location</label>
-            <input type="text" id="location" name="location" placeholder="e.g. East Campus">
+            <label for="gender">Gender</label>
+            <select id="gender" name="gender" required>
+                <option value="">-- Select --</option>
+                <option value="Male" {{ 'selected' if hostel and hostel.gender == 'Male' else '' }}>Male</option>
+                <option value="Female" {{ 'selected' if hostel and hostel.gender == 'Female' else '' }}>Female</option>
+            </select>
         </div>
-        <button type="submit" class="btn btn-primary">Add Hostel</button>
+        <div class="form-group">
+            <label for="location">Location / address</label>
+            <input type="text" id="location" name="location" placeholder="e.g. East Campus (auto-filled when you drop a pin)" value="{{ hostel.location if hostel else '' }}">
+        </div>
+        <div class="section">
+            <h2>Geo-fence (attendance area)</h2>
+            <p class="muted">
+                Click or drag the pin on the map to set the hostel's location, or type the coordinates below.
+                Students must be inside the blue circle to mark "Present".
+            </p>
+            <div id="hostel-map" class="map-canvas" style="height: 340px;"></div>
+            <p class="muted" style="margin-top: 6px;">
+                <button type="button" class="btn btn-secondary" id="locate-btn">Locate me</button>
+                Click anywhere on the map to drop a pin, or drag the pin to fine-tune.
+            </p>
+            <p class="muted" id="geo-hint" style="margin-top: 4px; font-size: 13px;">
+                On a PC the browser uses network-based location (can be off by several blocks) — a phone gives real GPS. The dashed circle shows the accuracy.
+            </p>
+            <div class="form-row" style="margin-top: 12px;">
+                <div class="form-group">
+                    <label for="lat">Latitude</label>
+                    <input type="number" id="lat" name="lat" step="any" placeholder="e.g. 23.7685922" value="{{ hostel.lat if hostel and hostel.lat is not none else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="lng">Longitude</label>
+                    <input type="number" id="lng" name="lng" step="any" placeholder="e.g. 90.4254990" value="{{ hostel.lng if hostel and hostel.lng is not none else '' }}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="radius_m">Attendance radius (metres)</label>
+                    <input type="number" id="radius_m" name="radius_m" min="20" step="5" value="{{ hostel.radius_m if hostel else 50 }}">
+                </div>
+                <div class="form-group">
+                    <label for="radius_slider">Radius slider</label>
+                    <input type="range" id="radius_slider" min="20" max="500" step="5" value="{{ hostel.radius_m if hostel else 50 }}" style="width: 100%;">
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">{{ 'Save Changes' if hostel else 'Add Hostel' }}</button>
+        {% if hostel %}<a class="btn btn-ghost" href="{{ url_for('manager_rooms') }}">Cancel</a>{% endif %}
     </form>
 </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>if (typeof window.L === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"><\/script>');</script>
+<script>
+(function () {
+    var latEl = document.getElementById('lat');
+    var lngEl = document.getElementById('lng');
+    var locEl = document.getElementById('location');
+    var radiusEl = document.getElementById('radius_m');
+    var sliderEl = document.getElementById('radius_slider');
+    var mapEl = document.getElementById('hostel-map');
+    var hintEl = document.getElementById('geo-hint');
+    var locateBtn = document.getElementById('locate-btn');
+
+    var map = null;
+    var marker = null;
+    var circle = null;
+    var accCircle = null;
+
+    function currentRadius() {
+        var v = parseInt(radiusEl.value, 10);
+        return isNaN(v) ? 50 : v;
+    }
+
+    function setInputs(lat, lng) {
+        latEl.value = lat.toFixed(7);
+        lngEl.value = lng.toFixed(7);
+    }
+
+    function statusMsg(text) {
+        if (hintEl) hintEl.textContent = text;
+    }
+
+    function updateCircle() {
+        if (!map) return;
+        if (circle) map.removeLayer(circle);
+        var p = marker ? marker.getLatLng() : map.getCenter();
+        circle = L.circle(p, { radius: currentRadius(), color: '#1d6fb8', fillOpacity: 0.12 }).addTo(map);
+    }
+
+    function drawAccuracy(lat, lng, acc) {
+        if (!map) return;
+        if (accCircle) map.removeLayer(accCircle);
+        if (acc > 0) {
+            accCircle = L.circle([lat, lng], { radius: acc, color: '#e67e22', dashArray: '4,4', fillOpacity: 0.05 }).addTo(map);
+        }
+    }
+
+    function clearAccuracy() {
+        if (accCircle) { map.removeLayer(accCircle); accCircle = null; }
+    }
+
+    var geocodeTimer = null;
+    function reverseGeocode(lat, lng) {
+        if (!locEl) return;
+        clearTimeout(geocodeTimer);
+        geocodeTimer = setTimeout(function () {
+            fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + lat + '&lon=' + lng)
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data && data.display_name && !locEl.value) {
+                        locEl.value = data.display_name;
+                    }
+                })
+                .catch(function () {});
+        }, 600);
+    }
+
+    function placePin(lat, lng) {
+        if (!map) return;
+        if (!marker) {
+            marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+            marker.on('dragend', function () {
+                var p = marker.getLatLng();
+                setInputs(p.lat, p.lng);
+                clearAccuracy();
+                reverseGeocode(p.lat, p.lng);
+            });
+        } else {
+            marker.setLatLng([lat, lng]);
+        }
+        setInputs(lat, lng);
+        updateCircle();
+    }
+
+    if (mapEl && window.L) {
+        var initLat = parseFloat(latEl.value);
+        var initLng = parseFloat(lngEl.value);
+        var hasInit = !isNaN(initLat) && !isNaN(initLng);
+        var center = hasInit ? [initLat, initLng] : [23.78, 90.40];
+
+        map = L.map('hostel-map').setView(center, hasInit ? 17 : 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        map.on('click', function (e) {
+            placePin(e.latlng.lat, e.latlng.lng);
+            clearAccuracy();
+            reverseGeocode(e.latlng.lat, e.latlng.lng);
+        });
+
+        function syncFromInputs() {
+            var lat = parseFloat(latEl.value);
+            var lng = parseFloat(lngEl.value);
+            if (isNaN(lat) || isNaN(lng)) return;
+            placePin(lat, lng);
+            clearAccuracy();
+            map.panTo([lat, lng]);
+        }
+        latEl.addEventListener('change', syncFromInputs);
+        lngEl.addEventListener('change', syncFromInputs);
+
+        radiusEl.addEventListener('input', function () {
+            sliderEl.value = radiusEl.value;
+            updateCircle();
+        });
+        sliderEl.addEventListener('input', function () {
+            radiusEl.value = sliderEl.value;
+            updateCircle();
+        });
+
+        if (hasInit) {
+            placePin(initLat, initLng);
+        } else {
+            updateCircle();
+        }
+    } else if (mapEl) {
+        mapEl.innerHTML = '<p class="muted" style="padding: 12px;">Map tiles could not load from the CDN &mdash; you can still type the coordinates below.</p>';
+    }
+
+    if (locateBtn) {
+        locateBtn.addEventListener('click', function () {
+            if (!navigator.geolocation) {
+                statusMsg('Geolocation is not supported by your browser.');
+                return;
+            }
+            locateBtn.textContent = 'Locating...';
+            navigator.geolocation.getCurrentPosition(
+                function (pos) {
+                    var lat = pos.coords.latitude;
+                    var lng = pos.coords.longitude;
+                    var acc = pos.coords.accuracy || 0;
+                    locateBtn.textContent = 'Locate me';
+                    setInputs(lat, lng);
+                    statusMsg('Location captured: ' + lat.toFixed(6) + ', ' + lng.toFixed(6) +
+                        ' &mdash; accuracy \u00b1' + Math.round(acc) + ' m. Drag the pin to correct it (a phone gives real GPS).');
+                    if (map) {
+                        placePin(lat, lng);
+                        drawAccuracy(lat, lng, acc);
+                        map.setView([lat, lng], 17);
+                    }
+                    reverseGeocode(lat, lng);
+                },
+                function (err) {
+                    locateBtn.textContent = 'Locate me';
+                    statusMsg('Could not get location: ' + err.message);
+                },
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            );
+        });
+    }
+})();
+</script>
 {% endblock %}

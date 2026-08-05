@@ -13,7 +13,7 @@
             <label for="hostel_id">Hostel</label>
             <select id="hostel_id" name="hostel_id" required>
                 {% for h in hostels %}
-                <option value="{{ h.hostel_id }}">{{ h.hostel_name }}</option>
+                <option value="{{ h.hostel_id }}">{{ h.hostel_name }} ({{ h.gender }})</option>
                 {% endfor %}
             </select>
         </div>

@@ -20,19 +20,20 @@
         <form method="post">
             <div class="form-group">
                 <label for="student_id">Student</label>
-                <select id="student_id" name="student_id" required>
+                <select id="student_id" name="student_id" data-role="gender-filter" required>
                     {% for s in students %}
-                    <option value="{{ s.student_id }}">{{ s.name }} (ID: {{ s.student_id }})</option>
+                    <option value="{{ s.student_id }}" data-gender="{{ s.gender }}">{{ s.name }} (ID: {{ s.student_id }}, {{ s.gender }})</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="form-group">
                 <label for="room_id">Room</label>
-                <select id="room_id" name="room_id" required>
+                <select id="room_id" name="room_id" data-role="gender-options" required>
                     {% for r in rooms %}
-                    <option value="{{ r.room_id }}">{{ r.room_no }} ({{ r.available_beds }} free)</option>
+                    <option value="{{ r.room_id }}" data-gender="{{ r.gender }}">{{ r.room_no }} ({{ r.available_beds }} free, {{ r.gender }})</option>
                     {% endfor %}
                 </select>
+                <p class="muted">Rooms outside the selected student's gender are hidden.</p>
             </div>
             <button type="submit" class="btn btn-success">Allocate</button>
         </form>
