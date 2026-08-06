@@ -10,10 +10,17 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import mysql.connector
 
 from config import SECRET_KEY
-from db import execute, get_connection, query
+from db import execute, get_connection, get_dedicated_connection, init_db, query
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
+init_db(app)
+
+
+@app.route('/healthz')
+def healthz():
+    query('SELECT 1')
+    return 'ok'
 
 
 @app.errorhandler(500)
@@ -297,7 +304,7 @@ def register_student():
 @login_required
 @role_required('manager')
 def delete_student(student_id):
-    conn = get_connection()
+    conn = get_dedicated_connection()
     try:
         cur = conn.cursor(dictionary=True)
         cur.execute('SELECT user_id, room_id FROM students WHERE student_id = %s', (student_id,))
@@ -336,8 +343,9 @@ def manager_rooms():
         'FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id ORDER BY r.room_id'
     )
     hostels = query(
-        'SELECT hostel_id, hostel_name, location, gender, total_rooms, lat, lng, radius_m '
-        'FROM hostels ORDER BY hostel_id'
+        'SELECT h.hostel_id, h.hostel_name, h.location, h.gender, h.lat, h.lng, h.radius_m, '
+        '(SELECT COUNT(*) FROM rooms r WHERE r.hostel_id = h.hostel_id) AS total_rooms '
+        'FROM hostels h ORDER BY h.hostel_id'
     )
     return render_template('manager/rooms.html', rooms=rooms, hostels=hostels)
 
@@ -525,7 +533,7 @@ def allocate_room():
                 'danger',
             )
             return redirect(url_for('allocate_room'))
-        conn = get_connection()
+        conn = get_dedicated_connection()
         try:
             cur = conn.cursor(dictionary=True)
             cur.execute('SELECT available_beds FROM rooms WHERE room_id = %s FOR UPDATE', (room_id,))
@@ -1017,7 +1025,7 @@ def delete_staff(staff_id):
     if staff_id == session.get('role_id'):
         flash('You cannot delete yourself.', 'danger')
         return redirect(url_for('manager_staff'))
-    conn = get_connection()
+    conn = get_dedicated_connection()
     try:
         cur = conn.cursor(dictionary=True)
         cur.execute('SELECT user_id FROM staff WHERE staff_id = %s', (staff_id,))

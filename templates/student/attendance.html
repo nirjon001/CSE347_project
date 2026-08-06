@@ -113,10 +113,11 @@
             userMarker.setLatLng([lat, lng]);
         }
         if (accuracy > 0) {
+            var shown = Math.min(accuracy, hostel.radius);
             if (!userAccuracy) {
-                userAccuracy = L.circle([lat, lng], { radius: accuracy, color: '#1d6fb8', dashArray: '4,4', fillOpacity: 0.05 }).addTo(map);
+                userAccuracy = L.circle([lat, lng], { radius: shown, color: '#d43f3f', dashArray: '4,4', fillOpacity: 0.05 }).addTo(map);
             } else {
-                userAccuracy.setLatLng([lat, lng]).setRadius(accuracy);
+                userAccuracy.setLatLng([lat, lng]).setRadius(shown);
             }
         }
         if (!distLine) {

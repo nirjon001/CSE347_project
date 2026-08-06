@@ -226,3 +226,10 @@ DELIMITER ;
 ALTER TABLE invoices
     ADD COLUMN IF NOT EXISTS invoice_type ENUM('Room Rent', 'Electricity', 'Food', 'Water', 'Other')
         NOT NULL DEFAULT 'Room Rent' AFTER student_id;
+
+-- ---------------------------------------------------------------------
+-- 9) Re-sync each hostel's room count with the real number of rooms
+--    (idempotent: safe to run any time)
+-- ---------------------------------------------------------------------
+UPDATE hostels h
+SET h.total_rooms = (SELECT COUNT(*) FROM rooms r WHERE r.hostel_id = h.hostel_id);
