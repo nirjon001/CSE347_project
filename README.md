@@ -1,26 +1,38 @@
-# CSE347 — Hostel Management System
+# 🏨 CSE347 — Hostel Management System
 
-A web-based hostel management system built for **CSE347: Information System Analysis & Design** (3rd year, 3rd semester).
+> A full-featured, role-based **Hostel Management System** built for **CSE347: Information System Analysis & Design** (3rd year, 3rd semester).
 
-## Features
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)
+![MySQL](https://img.shields.io/badge/Database-MySQL%2FMariaDB-4479A1?logo=mysql&logoColor=white)
+![Render](https://img.shields.io/badge/Host-Render-46E3B7?logo=render&logoColor=white)
+![Security](https://img.shields.io/badge/Security-Parameterized%20Queries-2ea44f)
+![Status](https://img.shields.io/badge/Status-LIVE-success)
+
+> **🟢 Live demo:** [https://hostel-management-368b.onrender.com/](https://hostel-management-368b.onrender.com/) — log in with the demo accounts below.
+
+---
+
+## ✨ Features
 
 - **Role-based login** — separate dashboards for Manager, Student, and Staff (Flask sessions + hashed passwords)
 - **Gender-separated hostels** — each hostel is Male or Female; room allocation (and the database) refuses to place a student in an opposite-gender hostel
 - **Notification system** — a bell with an unread-count badge and a full notification page; students/staff get automatic alerts (complaint updates, new invoices, parcel arrivals, visitor arrivals, violation notices, mess-off decisions) and managers can send free-text notices
 - **Geo-fenced attendance** — students and staff mark "Present" only from inside their hostel's GPS radius (browser location + Leaflet/OpenStreetMap, no paid API keys). Managers set the hostel's location by dropping a pin on a map or typing coordinates, and the map shows your live position with an accuracy estimate (how close ± the fix is) and an inside/outside check
 - **Student parcel self-collection** — staff receive parcels (auto-notifying the student); students pick them up with one click, and every parcel keeps an audit trail (who received it, who collected it, when)
-- **Manager**: register/delete students, allocate rooms, add/edit/delete hostels (map pin or typed coordinates; duplicate addresses are rejected) & add rooms with custom bed capacity, view each room's occupants, manage complaints & invoices (**generate several bills at once** — room rent / electricity / food / water / other — with a summary-by-type section, a per-student **expandable bill list** with totals, a **Print statement** per student showing their invoice count + total value, and per-invoice **Print** physical copies), record attendance, update the mess menu, record & resolve violations (tabbed page: record / send notice / browse all with Open-Resolved filters and per-row notify), view student feedback, approve/reject mess-off requests, view all parcels, view visitor logs, manage & delete staff
+- **Manager — rooms & people**: register/delete students, allocate rooms, add/edit/delete hostels (map pin or typed coordinates; duplicate addresses are rejected) & add rooms with custom bed capacity, view each room's occupants, manage & delete staff
+- **Manager — day-to-day**: manage complaints & invoices (**generate several bills at once** — room rent / electricity / food / water / other — with a summary-by-type section, a per-student **expandable bill list** with totals, a **Print statement** per student and per-invoice **Print** copies), record attendance, update the mess menu, record & resolve violations (tabbed page: record / send notice / browse all with Open-Resolved filters and per-row notify), view student feedback, approve/reject mess-off requests, view all parcels, view visitor logs
 - **Student**: view profile & room, submit complaints, view invoices (total / paid / unpaid summary with View-Print for a physical copy), apply mess-off, give feedback, record in/out, check & collect parcels (who received them, when collected), mark attendance
 - **Staff**: register visitors at the front desk, receive parcels (notifies the student), record student returns, record own (geo-fenced) attendance
 - **Security**: scrypt password hashing, parameterized SQL (SQL-injection safe), role-guarded routes, strict SQL mode so invalid data is rejected
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 - **Backend**: Python 3 + Flask (server-rendered Jinja2 templates)
 - **Database**: MySQL / MariaDB (schema in `hostel_management_schema.sql`)
 - **Frontend**: HTML + CSS (single small JS file)
 
-## Getting Started
+## 🚀 Getting Started
 
 ### 1. Prerequisites
 
@@ -98,7 +110,7 @@ You should see `Running on http://127.0.0.1:5000`. Open that URL in a browser an
 - Log in as **student1** to see the student side (complaints, invoices, mess menu, parcels with a **Collect** button, geo-fenced **Attendance**).
 - Log in as **staff1** to register a visitor, receive a parcel, and mark a student as returned.
 
-## Demo Accounts
+## 👥 Demo Accounts
 
 | Username   | Password   | Role    |
 |------------|------------|---------|
@@ -112,43 +124,15 @@ You should see `Running on http://127.0.0.1:5000`. Open that URL in a browser an
 | `student4` | `student123` | Student — Nusrat (room 301) |
 | `student5` | `student123` | Student — Mehedi (no room) |
 
-## Deploy to the Web (free)
+## 🌐 Live Website
 
-The **same code** runs locally *and* as a free web copy. The database settings are read from environment variables, so only *where MySQL lives* changes — not the code.
+The project runs online at **https://hostel-management-368b.onrender.com/** (free Render web service + Aiven free MySQL). It serves the same code as the local copy.
 
-### Architecture
+## ☁️ Deploy to the Web (free)
 
-- **Local copy** — XAMPP MySQL at `127.0.0.1` (unchanged).
-- **Web copy** — hosted on **Render** (free web service) backed by a **free external MySQL**. Recommended host: **Aiven free MySQL** (current MySQL 8, always-free, 1 GB, no credit card, remote access over TLS). Other free MySQL hosts tend to be unusable for this project — freesqldatabase.com runs ancient MySQL 5.5 (the schema's triggers/`CURRENT_TIMESTAMP` defaults can't import) and db4free.net's domain has been hijacked.
-- **Data sync** — `scripts\init_web_db.bat` imports the schema + seed once; `scripts\sync_web_db.bat` copies data either way on demand. Both delegate to `scripts\web_db.py`, which uses **mysql-connector-python** (already a project dependency) because XAMPP's MariaDB client can't authenticate to MySQL 8 hosts (they use the `caching_sha2_password` plugin).
+The **same code** runs locally *and* as a free web copy. The full guide — architecture, one-time Aiven + Render setup, TLS note, and the `sync_web_db.bat push/pull` data-sync commands — lives in **[`DEPLOYMENT.md`](DEPLOYMENT.md)**.
 
-### One-time setup
-
-1. **Create the web database on Aiven** (aiven.io):
-   - Sign up (GitHub/Google account works, **no credit card**), then **Create a service** → **MySQL** → the **free** plan → pick a region → create.
-   - Open the service, click **Create database** and name it **`hostel_management`**.
-   - Copy the connection details: **host**, **port**, **user**, **password**. Also download the **CA certificate** (Service settings → CA Certificate) and save it as **`certs\aiven-ca.pem`** inside this project folder.
-2. **Fill in the credentials** — copy `scripts\.web-db.env.example` → `scripts\.web-db.env` and edit it (the real file is git-ignored): set `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME=hostel_management`, `DB_SSL_CA=certs\aiven-ca.pem`, and keep `DB_STRIP_USING=1` (imports into your Aiven database without needing `CREATE DATABASE`).
-3. **Import schema + seed once** (uses `mysql-connector-python` from step 4's `pip install`; it creates `hostel_management` on Aiven and imports the 18 tables + 3 triggers + seed data):
-   ```
-   scripts\init_web_db.bat
-   ```
-4. **Deploy to Render** — push this repo to GitHub, then on render.com choose **New → Blueprint** and select the repo. `render.yaml` configures the free web service automatically (`gunicorn app:app`). In the service's **Environment** tab set `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT` (Aiven's port isn't 3306 — use the real one) and `SECRET_KEY` (Render generates one by default). The site goes live at `https://hostel-management.onrender.com`.
-
-> **TLS note**: Aiven requires encrypted connections. The app and scripts pick this up from `DB_SSL_CA` (the CA certificate is public, so it's committed with the repo). If you use a different host that doesn't need TLS, leave `DB_SSL_CA` blank.
-
-### Sync data between local and web
-
-```
-scripts\sync_web_db.bat push   # local -> web (upload your data)
-scripts\sync_web_db.bat pull   # web   -> local (download the web data)
-```
-
-`push` dumps your local XAMPP DB and imports it into the web DB; `pull` is the reverse. Both read `scripts\.web-db.env`.
-
-> **Free-tier notes**: Render's free web service sleeps when idle and expires after ~30 days unless you add a billing method. Aiven's free MySQL powers itself off after a period of inactivity — wake it from the Aiven console before a demo (takes a minute). The web DB uses the same schema + 3 triggers as local.
-
-## Troubleshooting
+## 🐛 Troubleshooting
 
 | Problem | Fix |
 |---|---|
@@ -162,89 +146,28 @@ scripts\sync_web_db.bat pull   # web   -> local (download the web data)
 | Attendance says "outside the area" | The browser's GPS is farther than the hostel's `radius_m` from its `lat`/`lng`. On a deployed server the browser may block geolocation unless the site is HTTPS — `localhost` always works. |
 | `scripts\init_web_db.bat` fails with a privileges error | The free host restricts `CREATE DATABASE` or `CREATE TRIGGER`. Keep `DB_STRIP_USING=1` and use a host that allows triggers (Aiven does). |
 
-## Project Structure
+## 📂 Project Structure
 
 ```
 CSE347_project/
-│
-├── app.py                          # Flask app: all routes (auth, manager, student, staff)
-├── config.py                       # DB connection + secret key (env-var driven, XAMPP defaults)
-├── db.py                           # Parameterized query/execute helpers
-├── requirements.txt                # Python dependencies
-├── render.yaml                     # Render Blueprint (free web service, gunicorn app:app)
-│
-├── scripts/                        # Web-deploy helpers (read scripts\.web-db.env)
-│   ├── web_db.py                   #   Python CLI: init (import schema+seed), drop, push, pull
-│   ├── init_web_db.bat             #   wrapper -> web_db.py init
-│   ├── sync_web_db.bat             #   wrapper -> web_db.py push / pull
-│   └── .web-db.env.example         #   credentials template (real file is git-ignored)
-│
-├── certs/                          # TLS CA certificate for the web DB (public, e.g. Aiven)
-│   └── aiven-ca.pem                #   referenced by DB_SSL_CA
-│
-├── hostel_management_schema.sql    # MySQL schema (18 tables + 3 triggers)
-├── migrations.sql                  # Upgrades an old schema to the current one (idempotent)
-├── seed_data.sql                   # Demo data + accounts
-│
-├── templates/                      # Jinja2 HTML pages
-│   ├── base.html                   #   shared layout (sidebar + bell badge, flashes, footer)
-│   ├── home.html                   #   landing page
-│   ├── notifications.html          #   per-user notification feed
-│   ├── invoice_print.html          #   printable single-invoice receipt
-│   ├── invoice_statement_print.html #   printable per-student statement (count + total)
-│   ├── auth/                       #   login + change-password pages
-│   │   ├── login.html
-│   │   └── change_password.html
-│   ├── manager/                    #   manager dashboard + feature pages
-│   │   ├── dashboard.html
-│   │   ├── students.html
-│   │   ├── register_student.html
-│   │   ├── rooms.html              #   hostel list (edit/delete) + rooms, add buttons
-│   │   ├── add_hostel.html         #   add OR edit hostel: map pin or typed coords
-│   │   ├── add_room.html
-│   │   ├── allocate_room.html      #   gender-filtered dropdowns
-│   │   ├── complaints.html
-│   │   ├── invoices.html           #   per-type grid + expandable grouped bill list
-│   │   ├── attendance.html
-│   │   ├── mess_menu.html
-│   │   ├── violations.html         #   tabs: record / send notice / browse + resolve + row notify
-│   │   ├── feedback.html
-│   │   ├── mess_off.html           #   approve / reject
-│   │   ├── parcels.html
-│   │   ├── visitors.html
-│   │   └── staff.html              #   + delete buttons
-│   ├── student/                    #   student dashboard + feature pages
-│   │   ├── dashboard.html
-│   │   ├── profile.html
-│   │   ├── room.html
-│   │   ├── complaints.html
-│   │   ├── invoices.html
-│   │   ├── mess_off.html
-│   │   ├── feedback.html
-│   │   ├── in_out.html
-│   │   ├── parcels.html            #   shows received_by + Collect button
-│   │   └── attendance.html         #   geo-fenced + Leaflet map (your location + inside/outside badge)
-│   └── staff/                      #   staff dashboard + feature pages
-│       ├── dashboard.html
-│       ├── visitors.html
-│       ├── parcels.html            #   receive form
-│       ├── in_out.html             #   mark students returned
-│       └── attendance.html         #   geo-fenced + Leaflet map (hostel picker + your location)
-│
-├── static/                         # Static assets
-│   ├── css/
-│   │   └── style.css               #   stylesheet
-│   └── js/
-│       └── main.js                 #   confirm dialogs + gender-filtered room dropdown
-│
-├── report.md                       # Full code walkthrough (how every part works)
-├── class_diagram (1).svg           # UML class diagram (17 classes)
-├── Requirements Definition.pdf     # Functional & non-functional requirements
-└── AGENTS .md                      # Project memory / handoff notes
+├── app.py, config.py, db.py       # Flask app (all routes), env-driven config, DB helpers
+├── requirements.txt, render.yaml  # Python deps, Render Blueprint (gunicorn app:app)
+├── hostel_management_schema.sql   # Fresh schema (18 tables + 3 triggers)
+├── migrations.sql                 # Idempotent upgrade for older databases
+├── seed_data.sql                  # Demo accounts & records
+├── templates/                     # Jinja2 pages (auth/, manager/, student/, staff/ + base)
+├── static/                        # css/style.css, js/main.js
+├── scripts/                       # Web-deploy helpers (init_web_db.bat, sync_web_db.bat)
+├── certs/                         # TLS CA cert (aiven-ca.pem) for the web DB
+├── DEPLOYMENT.md                  # Full web-deployment guide
+├── report.md                      # Code walkthrough (see Documentation below)
+├── class_diagram (1).svg          # UML class diagram (17 classes)
+└── Requirements Definition.pdf    # Functional & non-functional requirements
 ```
 
-## Documentation
+## 📚 Documentation
 
+- `DEPLOYMENT.md` — full guide for running the free web copy (Render + Aiven).
 - `report.md` — explains the request flow, every route, the class-diagram mapping, and security measures.
 - `class_diagram (1).svg` — UML class diagram (17 classes).
 - `Requirements Definition.pdf` — functional & non-functional requirements.
