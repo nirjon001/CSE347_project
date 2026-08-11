@@ -52,10 +52,11 @@
 <div class="section">
     <h2>Recent Student Attendance</h2>
     <table>
-        <thead><tr><th>Student</th><th>Date</th><th>Status</th></tr></thead>
+        <thead><tr><th>#</th><th>Student</th><th>Date</th><th>Status</th></tr></thead>
         <tbody>
             {% for a in student_attendance %}
             <tr>
+                <td>{{ loop.index }}</td>
                 <td>{{ a.name }}</td>
                 <td>{{ a.date }}</td>
                 <td>
@@ -65,7 +66,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="3" class="empty">No student attendance recorded yet.</td></tr>
+            <tr><td colspan="4" class="empty">No student attendance recorded yet.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -74,10 +75,11 @@
 <div class="section">
     <h2>Recent Staff Attendance</h2>
     <table>
-        <thead><tr><th>Staff</th><th>Date</th><th>Status</th></tr></thead>
+        <thead><tr><th>#</th><th>Staff</th><th>Date</th><th>Status</th></tr></thead>
         <tbody>
             {% for a in staff_attendance %}
             <tr>
+                <td>{{ loop.index }}</td>
                 <td>{{ a.name }}</td>
                 <td>{{ a.date }}</td>
                 <td>
@@ -87,7 +89,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="3" class="empty">No staff attendance recorded yet.</td></tr>
+            <tr><td colspan="4" class="empty">No staff attendance recorded yet.</td></tr>
             {% endfor %}
         </tbody>
     </table>

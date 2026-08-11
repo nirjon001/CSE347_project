@@ -16,11 +16,11 @@
 <div class="section">
     <h2>Hostels</h2>
     <table>
-        <thead><tr><th>ID</th><th>Name</th><th>Gender</th><th>Location</th><th>Rooms</th><th>Geo-fence</th><th>Actions</th></tr></thead>
+        <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Location</th><th>Rooms</th><th>Geo-fence</th><th>Actions</th></tr></thead>
         <tbody>
             {% for h in hostels %}
             <tr>
-                <td>{{ h.hostel_id }}</td>
+                <td>{{ loop.index }}</td>
                 <td>{{ h.hostel_name }}</td>
                 <td>
                     {% if h.gender == 'Male' %}<span class="badge badge-blue">{{ h.gender }}</span>
@@ -51,11 +51,12 @@
     <h2>Rooms</h2>
     <table>
         <thead>
-            <tr><th>Room</th><th>Hostel</th><th>Capacity</th><th>Available Beds</th><th>Occupants</th><th>Availability</th></tr>
+            <tr><th>#</th><th>Room</th><th>Hostel</th><th>Capacity</th><th>Available Beds</th><th>Occupants</th><th>Availability</th></tr>
         </thead>
         <tbody>
             {% for r in rooms %}
             <tr>
+                <td>{{ loop.index }}</td>
                 <td>{{ r.room_no }}</td>
                 <td>{{ r.hostel_name }} <span class="muted">({{ r.gender }})</span></td>
                 <td>{{ r.total_beds }}</td>
@@ -72,7 +73,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="6" class="empty">No rooms found.</td></tr>
+            <tr><td colspan="7" class="empty">No rooms found.</td></tr>
             {% endfor %}
         </tbody>
     </table>

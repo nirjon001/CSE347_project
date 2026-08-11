@@ -9,12 +9,12 @@
 </div>
 <table>
     <thead>
-        <tr><th>ID</th><th>Student</th><th>Start</th><th>End</th><th>Status</th><th>Action</th></tr>
+        <tr><th>#</th><th>Student</th><th>Start</th><th>End</th><th>Status</th><th>Action</th></tr>
     </thead>
     <tbody>
         {% for r in requests %}
         <tr>
-            <td>{{ r.mess_off_id }}</td>
+            <td>{{ loop.index }}</td>
             <td>{{ r.student_name }}</td>
             <td>{{ r.start_date }}</td>
             <td>{{ r.end_date }}</td>

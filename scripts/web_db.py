@@ -8,12 +8,21 @@ Why Python instead of XAMPP's mysql.exe?
   mysql-connector-python, which handles MySQL 8 + TLS natively, so this tool
   uses that same library.
 
+WEB vs LOCAL terminology:
+  * WEB  = the deployed copy's database (Aiven MySQL 8 over TLS). Env keys
+           DB_* (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DB_SSL_CA).
+  * LOCAL = the XAMPP MariaDB database on this PC. Env keys LOCAL_DB_* plus
+           MYSQLDUMP_EXE / MYSQL_EXE (XAMPP binaries), which cannot talk to
+           MySQL 8, so all WEB-side access here uses mysql-connector-python.
+
 Commands:
   init        One-time import: create the database if needed, then import
-              hostel_management_schema.sql + seed_data.sql.
+              hostel_management_schema.sql + seed_data.sql.      (WEB side)
+  drop        DROP the web database.                             (WEB side)
   push        Dump the LOCAL XAMPP database (mysqldump) and import it into
-              the web database.
+              the web database. (LOCAL -> WEB)
   pull        Dump the web database and import it into the local XAMPP DB.
+                                                                  (WEB -> LOCAL)
 
 Configuration lives in scripts/.web-db.env (git-ignored). See
 scripts/.web-db.env.example for the template.

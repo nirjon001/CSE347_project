@@ -10,12 +10,12 @@
 </div>
 <table>
     <thead>
-        <tr><th>ID</th><th>Name</th><th>Username</th><th>Email</th><th>Phone</th><th>Gender</th><th>Room</th><th>Actions</th></tr>
+        <tr><th>#</th><th>Name</th><th>Username</th><th>Email</th><th>Phone</th><th>Gender</th><th>Room</th><th>Actions</th></tr>
     </thead>
     <tbody>
         {% for s in students %}
         <tr>
-            <td>{{ s.student_id }}</td>
+            <td>{{ loop.index }}</td>
             <td>{{ s.name }}</td>
             <td>{{ s.username }}</td>
             <td>{{ s.email or '-' }}</td>

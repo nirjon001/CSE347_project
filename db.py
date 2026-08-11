@@ -4,6 +4,15 @@ from flask import g, has_app_context
 from config import DB_CONFIG
 
 
+# ---------------------------------------------------------------------------
+# SHARED DB layer (no web/local branching needed):
+#   * LOCAL (XAMPP): DB_CONFIG is the 127.0.0.1 passwordless-root defaults.
+#   * WEB (Render + Aiven): DB_CONFIG is the env-var connection, and TLS is
+#     added by config.py whenever DB_SSL_CA is set.
+#
+# One connection is reused for the whole request (flask.g) so a page that
+# runs several queries only opens one connection instead of one per query.
+# ---------------------------------------------------------------------------
 def _open():
     conn = mysql.connector.connect(connection_timeout=15, **DB_CONFIG)
     cur = conn.cursor()

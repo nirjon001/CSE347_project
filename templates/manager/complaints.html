@@ -9,13 +9,14 @@
 </div>
 <table>
     <thead>
-        <tr><th>ID</th><th>Student</th><th>Room</th><th>Description</th><th>Date</th><th>Status</th><th>Update</th></tr>
+        <tr><th>#</th><th>Student</th><th>Hostel</th><th>Room</th><th>Description</th><th>Date</th><th>Status</th><th>Update</th></tr>
     </thead>
     <tbody>
         {% for c in complaints %}
         <tr>
-            <td>{{ c.complaint_id }}</td>
+            <td>{{ loop.index }}</td>
             <td>{{ c.student_name }}</td>
+            <td>{{ c.hostel_name or '-' }}</td>
             <td>{{ c.room_no or '-' }}</td>
             <td>{{ c.description }}</td>
             <td>{{ c.date }}</td>
@@ -37,7 +38,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="empty">No complaints found.</td></tr>
+        <tr><td colspan="8" class="empty">No complaints found.</td></tr>
         {% endfor %}
     </tbody>
 </table>

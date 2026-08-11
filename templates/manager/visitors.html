@@ -9,12 +9,12 @@
 </div>
 <table>
     <thead>
-        <tr><th>ID</th><th>Visitor</th><th>Visiting</th><th>Date</th><th>Registered By</th></tr>
+        <tr><th>#</th><th>Visitor</th><th>Visiting</th><th>Date</th><th>Registered By</th></tr>
     </thead>
     <tbody>
         {% for v in visitors %}
         <tr>
-            <td>{{ v.visitor_id }}</td>
+            <td>{{ loop.index }}</td>
             <td>{{ v.visitor_name }}</td>
             <td>{{ v.student_name }}</td>
             <td>{{ v.visit_date }}</td>

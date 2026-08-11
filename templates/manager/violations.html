@@ -94,11 +94,11 @@
             <button type="button" class="chip" data-filter="Resolved">Resolved ({{ violations|selectattr('status', 'equalto', 'Resolved')|list|length }})</button>
         </div>
         <table>
-            <thead><tr><th>ID</th><th>Person</th><th>Type</th><th>Description</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>#</th><th>Person</th><th>Type</th><th>Description</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
                 {% for v in violations %}
                 <tr data-status="{{ v.status }}">
-                    <td>{{ v.violation_id }}</td>
+                    <td>{{ loop.index }}</td>
                     <td>{{ v.student_name or v.staff_name }}</td>
                     <td>{{ 'Student' if v.student_id else 'Staff' }}</td>
                     <td>{{ v.description }}</td>

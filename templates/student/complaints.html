@@ -21,11 +21,13 @@
 <div class="section">
     <h2>My Complaints</h2>
     <table>
-        <thead><tr><th>ID</th><th>Description</th><th>Date</th><th>Status</th></tr></thead>
+        <thead><tr><th>#</th><th>Hostel</th><th>Room</th><th>Description</th><th>Date</th><th>Status</th></tr></thead>
         <tbody>
             {% for c in complaints %}
             <tr>
-                <td>{{ c.complaint_id }}</td>
+                <td>{{ loop.index }}</td>
+                <td>{{ c.hostel_name or '-' }}</td>
+                <td>{{ c.room_no or '-' }}</td>
                 <td>{{ c.description }}</td>
                 <td>{{ c.date }}</td>
                 <td>
@@ -35,7 +37,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="4" class="empty">You have not submitted any complaints.</td></tr>
+            <tr><td colspan="6" class="empty">You have not submitted any complaints.</td></tr>
             {% endfor %}
         </tbody>
     </table>

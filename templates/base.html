@@ -53,56 +53,76 @@
 </svg>
 {%- endmacro %}
 {% if session_role %}
-<aside class="sidebar">
+<button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="sidebar">
+    <svg class="sidebar-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<aside class="sidebar" id="sidebar">
+    <button type="button" class="sidebar-close" id="sidebar-close" aria-label="Close menu">
+        <svg class="sidebar-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
     <a class="brand" href="{{ url_for('dashboard') }}">Hostel<span>MS</span></a>
     <nav class="sidebar-nav">
+        {% set active = request.endpoint %}
         {% if session_role == 'manager' %}
-            <a href="{{ url_for('manager_dashboard') }}">{{ icon('dashboard')|safe }}<span>Dashboard</span></a>
-            <a href="{{ url_for('manager_students') }}">{{ icon('users')|safe }}<span>Students</span></a>
-            <a href="{{ url_for('manager_rooms') }}">{{ icon('home')|safe }}<span>Rooms</span></a>
-            <a href="{{ url_for('manager_complaints') }}">{{ icon('alert')|safe }}<span>Complaints</span></a>
-            <a href="{{ url_for('manager_invoices') }}">{{ icon('file')|safe }}<span>Invoices</span></a>
-            <a href="{{ url_for('manager_attendance') }}">{{ icon('calendar')|safe }}<span>Attendance</span></a>
-            <a href="{{ url_for('manager_mess_menu') }}">{{ icon('coffee')|safe }}<span>Mess Menu</span></a>
-            <a href="{{ url_for('manager_mess_off') }}">{{ icon('ban')|safe }}<span>Mess Off</span></a>
-            <a href="{{ url_for('manager_violations') }}">{{ icon('flag')|safe }}<span>Violations</span></a>
-            <a href="{{ url_for('manager_feedback') }}">{{ icon('comment')|safe }}<span>Feedback</span></a>
-            <a href="{{ url_for('manager_visitors') }}">{{ icon('usercheck')|safe }}<span>Visitors</span></a>
-            <a href="{{ url_for('manager_parcels') }}">{{ icon('box')|safe }}<span>Parcels</span></a>
-            <a href="{{ url_for('manager_staff') }}">{{ icon('briefcase')|safe }}<span>Staff</span></a>
+            <a href="{{ url_for('manager_dashboard') }}"{% if active == 'manager_dashboard' %} class="active"{% endif %}>{{ icon('dashboard')|safe }}<span>Dashboard</span></a>
+            <a href="{{ url_for('manager_students') }}"{% if active in ['manager_students', 'register_student', 'delete_student'] %} class="active"{% endif %}>{{ icon('users')|safe }}<span>Students</span></a>
+            <a href="{{ url_for('manager_rooms') }}"{% if active in ['manager_rooms', 'add_hostel', 'edit_hostel', 'delete_hostel', 'add_room', 'allocate_room'] %} class="active"{% endif %}>{{ icon('home')|safe }}<span>Rooms</span></a>
+            <a href="{{ url_for('manager_complaints') }}"{% if active == 'manager_complaints' %} class="active"{% endif %}>{{ icon('alert')|safe }}<span>Complaints</span></a>
+            <a href="{{ url_for('manager_invoices') }}"{% if active in ['manager_invoices', 'toggle_invoice', 'manager_invoice_print', 'manager_invoice_statement_print'] %} class="active"{% endif %}>{{ icon('file')|safe }}<span>Invoices</span></a>
+            <a href="{{ url_for('manager_attendance') }}"{% if active == 'manager_attendance' %} class="active"{% endif %}>{{ icon('calendar')|safe }}<span>Attendance</span></a>
+            <a href="{{ url_for('manager_mess_menu') }}"{% if active == 'manager_mess_menu' %} class="active"{% endif %}>{{ icon('coffee')|safe }}<span>Mess Menu</span></a>
+            <a href="{{ url_for('manager_mess_off') }}"{% if active == 'manager_mess_off' %} class="active"{% endif %}>{{ icon('ban')|safe }}<span>Mess Off</span></a>
+            <a href="{{ url_for('manager_violations') }}"{% if active in ['manager_violations', 'manager_notify', 'resolve_violation'] %} class="active"{% endif %}>{{ icon('flag')|safe }}<span>Violations</span></a>
+            <a href="{{ url_for('manager_feedback') }}"{% if active == 'manager_feedback' %} class="active"{% endif %}>{{ icon('comment')|safe }}<span>Feedback</span></a>
+            <a href="{{ url_for('manager_visitors') }}"{% if active == 'manager_visitors' %} class="active"{% endif %}>{{ icon('usercheck')|safe }}<span>Visitors</span></a>
+            <a href="{{ url_for('manager_parcels') }}"{% if active == 'manager_parcels' %} class="active"{% endif %}>{{ icon('box')|safe }}<span>Parcels</span></a>
+            <a href="{{ url_for('manager_staff') }}"{% if active in ['manager_staff', 'delete_staff'] %} class="active"{% endif %}>{{ icon('briefcase')|safe }}<span>Staff</span></a>
         {% elif session_role == 'student' %}
-            <a href="{{ url_for('student_dashboard') }}">{{ icon('dashboard')|safe }}<span>Dashboard</span></a>
-            <a href="{{ url_for('student_profile') }}">{{ icon('user')|safe }}<span>Profile</span></a>
-            <a href="{{ url_for('student_room') }}">{{ icon('home')|safe }}<span>My Room</span></a>
-            <a href="{{ url_for('student_complaints') }}">{{ icon('alert')|safe }}<span>Complaints</span></a>
-            <a href="{{ url_for('student_invoices') }}">{{ icon('file')|safe }}<span>Invoices</span></a>
-            <a href="{{ url_for('student_mess_off') }}">{{ icon('ban')|safe }}<span>Mess Off</span></a>
-            <a href="{{ url_for('student_feedback') }}">{{ icon('comment')|safe }}<span>Feedback</span></a>
-            <a href="{{ url_for('student_in_out') }}">{{ icon('arrow')|safe }}<span>In / Out</span></a>
-            <a href="{{ url_for('student_attendance') }}">{{ icon('map')|safe }}<span>Attendance</span></a>
-            <a href="{{ url_for('student_parcels') }}">{{ icon('box')|safe }}<span>Parcels</span></a>
+            <a href="{{ url_for('student_dashboard') }}"{% if active == 'student_dashboard' %} class="active"{% endif %}>{{ icon('dashboard')|safe }}<span>Dashboard</span></a>
+            <a href="{{ url_for('student_profile') }}"{% if active == 'student_profile' %} class="active"{% endif %}>{{ icon('user')|safe }}<span>Profile</span></a>
+            <a href="{{ url_for('student_room') }}"{% if active == 'student_room' %} class="active"{% endif %}>{{ icon('home')|safe }}<span>My Room</span></a>
+            <a href="{{ url_for('student_complaints') }}"{% if active == 'student_complaints' %} class="active"{% endif %}>{{ icon('alert')|safe }}<span>Complaints</span></a>
+            <a href="{{ url_for('student_invoices') }}"{% if active in ['student_invoices', 'student_invoice_print'] %} class="active"{% endif %}>{{ icon('file')|safe }}<span>Invoices</span></a>
+            <a href="{{ url_for('student_mess_off') }}"{% if active == 'student_mess_off' %} class="active"{% endif %}>{{ icon('ban')|safe }}<span>Mess Off</span></a>
+            <a href="{{ url_for('student_feedback') }}"{% if active == 'student_feedback' %} class="active"{% endif %}>{{ icon('comment')|safe }}<span>Feedback</span></a>
+            <a href="{{ url_for('student_in_out') }}"{% if active == 'student_in_out' %} class="active"{% endif %}>{{ icon('arrow')|safe }}<span>In / Out</span></a>
+            <a href="{{ url_for('student_attendance') }}"{% if active == 'student_attendance' %} class="active"{% endif %}>{{ icon('map')|safe }}<span>Attendance</span></a>
+            <a href="{{ url_for('student_parcels') }}"{% if active == 'student_parcels' %} class="active"{% endif %}>{{ icon('box')|safe }}<span>Parcels</span></a>
         {% elif session_role == 'staff' %}
-            <a href="{{ url_for('staff_dashboard') }}">{{ icon('dashboard')|safe }}<span>Dashboard</span></a>
-            <a href="{{ url_for('staff_visitors') }}">{{ icon('usercheck')|safe }}<span>Visitors</span></a>
-            <a href="{{ url_for('staff_parcels') }}">{{ icon('box')|safe }}<span>Parcels</span></a>
-            <a href="{{ url_for('staff_in_out') }}">{{ icon('arrow')|safe }}<span>In / Out</span></a>
-            <a href="{{ url_for('staff_attendance') }}">{{ icon('calendar')|safe }}<span>Attendance</span></a>
+            <a href="{{ url_for('staff_dashboard') }}"{% if active == 'staff_dashboard' %} class="active"{% endif %}>{{ icon('dashboard')|safe }}<span>Dashboard</span></a>
+            <a href="{{ url_for('staff_visitors') }}"{% if active == 'staff_visitors' %} class="active"{% endif %}>{{ icon('usercheck')|safe }}<span>Visitors</span></a>
+            <a href="{{ url_for('staff_parcels') }}"{% if active == 'staff_parcels' %} class="active"{% endif %}>{{ icon('box')|safe }}<span>Parcels</span></a>
+            <a href="{{ url_for('staff_in_out') }}"{% if active == 'staff_in_out' %} class="active"{% endif %}>{{ icon('arrow')|safe }}<span>In / Out</span></a>
+            <a href="{{ url_for('staff_attendance') }}"{% if active == 'staff_attendance' %} class="active"{% endif %}>{{ icon('calendar')|safe }}<span>Attendance</span></a>
         {% endif %}
     </nav>
     <div class="sidebar-footer">
-        <a class="notif-link" href="{{ url_for('notifications') }}">
-            {{ icon('bell')|safe }}<span>Notifications</span>
-            {% if unread_count > 0 %}<span class="notif-badge">{{ unread_count }}</span>{% endif %}
-        </a>
-        <span class="nav-user">
-            <span class="nav-avatar">{{ session_username[0]|upper }}</span>
-            <span class="nav-username">{{ session_username }}</span>
-            <span class="nav-role nav-role-{{ session_role }}">{{ session_role }}</span>
-        </span>
-        <a href="{{ url_for('change_password') }}">{{ icon('lock')|safe }}<span>Change Password</span></a>
-        <a href="{{ url_for('logout') }}">{{ icon('logout')|safe }}<span>Logout</span></a>
+        <div class="user-menu" id="user-menu">
+            <button type="button" class="user-menu-toggle" id="user-menu-toggle" aria-haspopup="true" aria-expanded="false">
+                <span class="nav-avatar">{{ session_username[0]|upper }}</span>
+                <span class="nav-user">
+                    <span class="nav-username">{{ session_username }}</span>
+                    <span class="nav-role nav-role-{{ session_role }}">{{ session_role }}</span>
+                </span>
+                <svg class="user-menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="user-menu-dropdown" id="user-menu-dropdown">
+                <div class="user-menu-header">
+                    <span class="nav-avatar">{{ session_username[0]|upper }}</span>
+                    <span class="nav-username">{{ session_username }}</span>
+                    <span class="nav-role nav-role-{{ session_role }}">{{ session_role }}</span>
+                </div>
+                <a class="user-menu-item notif-link" href="{{ url_for('notifications') }}">
+                    {{ icon('bell')|safe }}<span>Notifications</span>
+                    {% if unread_count > 0 %}<span class="notif-badge">{{ unread_count }}</span>{% endif %}
+                </a>
+                <a class="user-menu-item" href="{{ url_for('change_password') }}">{{ icon('lock')|safe }}<span>Change Password</span></a>
+                <a class="user-menu-item" href="{{ url_for('logout') }}">{{ icon('logout')|safe }}<span>Logout</span></a>
+            </div>
+        </div>
     </div>
 </aside>
+<div class="sidebar-overlay" id="sidebar-overlay" hidden></div>
 {% endif %}
 
 <div class="container">

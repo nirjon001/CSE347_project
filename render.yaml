@@ -1,5 +1,8 @@
 # Render Blueprint — free deployment of the web copy.
 #
+# WEB-ONLY file: this deploys the deployed (web) copy on Render.com and is
+# never used for the local XAMPP setup.
+#
 # 1. Sign up at render.com (free).
 # 2. Push this repo to GitHub, then in Render: New -> Blueprint, pick the repo.
 # 3. Render creates the free web service below and runs `gunicorn app:app`.

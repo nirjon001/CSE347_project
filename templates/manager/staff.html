@@ -47,11 +47,11 @@
 <div class="section">
     <h2>Staff Members</h2>
     <table>
-        <thead><tr><th>ID</th><th>Name</th><th>Username</th><th>Designation</th><th>Salary</th><th>Actions</th></tr></thead>
+        <thead><tr><th>#</th><th>Name</th><th>Username</th><th>Designation</th><th>Salary</th><th>Actions</th></tr></thead>
         <tbody>
             {% for st in staff_members %}
             <tr>
-                <td>{{ st.staff_id }}</td>
+                <td>{{ loop.index }}</td>
                 <td>{{ st.name }}</td>
                 <td>{{ st.username }}</td>
                 <td>{{ st.designation }}</td>

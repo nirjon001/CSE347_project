@@ -583,9 +583,11 @@ def manager_complaints():
         flash('Complaint status updated.', 'success')
         return redirect(url_for('manager_complaints'))
     complaints = query(
-        'SELECT c.*, s.name AS student_name, r.room_no '
+        'SELECT c.*, s.name AS student_name, r.room_no, h.hostel_name '
         'FROM complaints c JOIN students s ON c.student_id = s.student_id '
-        'LEFT JOIN rooms r ON c.room_id = r.room_id ORDER BY c.date DESC, c.complaint_id DESC'
+        'LEFT JOIN rooms r ON c.room_id = r.room_id '
+        'LEFT JOIN hostels h ON r.hostel_id = h.hostel_id '
+        'ORDER BY c.date DESC, c.complaint_id DESC'
     )
     return render_template('manager/complaints.html', complaints=complaints)
 
@@ -957,7 +959,7 @@ def manager_mess_off():
     requests = query(
         'SELECT r.*, s.name AS student_name FROM mess_off_requests r '
         'JOIN students s ON r.student_id = s.student_id '
-        'ORDER BY r.mess_off_id DESC'
+        'ORDER BY r.start_date DESC, r.mess_off_id DESC'
     )
     return render_template('manager/mess_off.html', requests=requests)
 
@@ -967,7 +969,7 @@ def manager_mess_off():
 @role_required('manager')
 def manager_parcels():
     parcels = query(
-        'SELECT p.*, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
+        'SELECT p.*, s.student_id, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
         'FROM parcels p JOIN students s ON p.student_id = s.student_id '
         'LEFT JOIN staff r ON p.received_by_staff = r.staff_id '
         'LEFT JOIN students c ON p.collected_by_student = c.student_id '
@@ -1135,14 +1137,14 @@ def student_complaints():
     if request.method == 'POST':
         description = request.form.get('description', '').strip()
         if description:
+            student = query(
+                'SELECT name, room_id FROM students WHERE student_id = %s',
+                (session['role_id'],), one=True,
+            )
             execute(
                 'INSERT INTO complaints (student_id, room_id, description, status, date) '
                 'VALUES (%s, %s, %s, %s, %s)',
-                (session['role_id'], session.get('room_id'), description, 'Pending', date.today().isoformat()),
-            )
-            student = query(
-                'SELECT name FROM students WHERE student_id = %s',
-                (session['role_id'],), one=True,
+                (session['role_id'], student['room_id'], description, 'Pending', date.today().isoformat()),
             )
             notify_managers(
                 'New complaint',
@@ -1152,7 +1154,11 @@ def student_complaints():
             flash('Complaint submitted.', 'success')
         return redirect(url_for('student_complaints'))
     complaints = query(
-        'SELECT * FROM complaints WHERE student_id = %s ORDER BY date DESC, complaint_id DESC',
+        'SELECT c.*, r.room_no, h.hostel_name '
+        'FROM complaints c '
+        'LEFT JOIN rooms r ON c.room_id = r.room_id '
+        'LEFT JOIN hostels h ON r.hostel_id = h.hostel_id '
+        'WHERE c.student_id = %s ORDER BY c.date DESC, c.complaint_id DESC',
         (session['role_id'],),
     )
     return render_template('student/complaints.html', complaints=complaints)
@@ -1212,7 +1218,7 @@ def student_mess_off():
             flash('Mess off request submitted.', 'success')
         return redirect(url_for('student_mess_off'))
     requests = query(
-        'SELECT * FROM mess_off_requests WHERE student_id = %s ORDER BY mess_off_id DESC',
+        'SELECT * FROM mess_off_requests WHERE student_id = %s ORDER BY start_date DESC, mess_off_id DESC',
         (session['role_id'],),
     )
     return render_template('student/mess_off.html', requests=requests)
@@ -1473,7 +1479,7 @@ def staff_parcels():
         return redirect(url_for('staff_parcels'))
     students = query('SELECT student_id, name FROM students ORDER BY student_id')
     parcels = query(
-        'SELECT p.*, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
+        'SELECT p.*, s.student_id, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
         'FROM parcels p JOIN students s ON p.student_id = s.student_id '
         'LEFT JOIN staff r ON p.received_by_staff = r.staff_id '
         'LEFT JOIN students c ON p.collected_by_student = c.student_id '

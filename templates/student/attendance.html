@@ -48,10 +48,11 @@
 <div class="section">
     <h2>Attendance History</h2>
     <table>
-        <thead><tr><th>Date</th><th>Status</th></tr></thead>
+        <thead><tr><th>#</th><th>Date</th><th>Status</th></tr></thead>
         <tbody>
             {% for r in records %}
             <tr>
+                <td>{{ loop.index }}</td>
                 <td>{{ r.date }}</td>
                 <td>
                     {% if r.status == 'Present' %}<span class="badge badge-green">Present</span>
@@ -60,7 +61,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="2" class="empty">No attendance recorded yet.</td></tr>
+            <tr><td colspan="3" class="empty">No attendance recorded yet.</td></tr>
             {% endfor %}
         </tbody>
     </table>

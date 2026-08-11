@@ -9,12 +9,12 @@
 </div>
 <table>
     <thead>
-        <tr><th>ID</th><th>Received Date</th><th>Received By</th><th>Status</th><th>Collected At</th><th>Action</th></tr>
+        <tr><th>#</th><th>Received Date</th><th>Received By</th><th>Status</th><th>Collected At</th><th>Action</th></tr>
     </thead>
     <tbody>
         {% for p in parcels %}
         <tr>
-            <td>{{ p.parcel_id }}</td>
+            <td>{{ loop.index }}</td>
             <td>{{ p.received_date }}</td>
             <td>{{ p.received_by or '-' }}</td>
             <td>

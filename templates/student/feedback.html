@@ -21,11 +21,11 @@
 <div class="section">
     <h2>My Feedback</h2>
     <table>
-        <thead><tr><th>ID</th><th>Description</th><th>Date</th></tr></thead>
+        <thead><tr><th>#</th><th>Description</th><th>Date</th></tr></thead>
         <tbody>
             {% for f in feedbacks %}
             <tr>
-                <td>{{ f.feedback_id }}</td>
+                <td>{{ loop.index }}</td>
                 <td>{{ f.description }}</td>
                 <td>{{ f.date }}</td>
             </tr>

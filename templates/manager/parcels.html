@@ -9,13 +9,14 @@
 </div>
 <table>
     <thead>
-        <tr><th>ID</th><th>Student</th><th>Received Date</th><th>Received By</th><th>Status</th><th>Collected By</th><th>Collected At</th></tr>
+        <tr><th>#</th><th>Student</th><th>Student ID</th><th>Received Date</th><th>Received By</th><th>Status</th><th>Collected By</th><th>Collected At</th></tr>
     </thead>
     <tbody>
         {% for p in parcels %}
         <tr>
-            <td>{{ p.parcel_id }}</td>
+            <td>{{ loop.index }}</td>
             <td>{{ p.student_name }}</td>
+            <td>{{ p.student_id }}</td>
             <td>{{ p.received_date }}</td>
             <td>{{ p.received_by or '-' }}</td>
             <td>
@@ -26,7 +27,7 @@
             <td>{{ p.collected_at or '-' }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="empty">No parcels recorded.</td></tr>
+        <tr><td colspan="8" class="empty">No parcels recorded.</td></tr>
         {% endfor %}
     </tbody>
 </table>
