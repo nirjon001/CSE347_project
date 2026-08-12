@@ -9,18 +9,19 @@
 </div>
 <table>
     <thead>
-        <tr><th>#</th><th>Student</th><th>Feedback</th><th>Date</th></tr>
+        <tr><th>#</th><th>Student</th><th>Student ID</th><th>Feedback</th><th>Date</th></tr>
     </thead>
     <tbody>
         {% for f in feedbacks %}
         <tr>
             <td>{{ loop.index }}</td>
             <td>{{ f.student_name }}</td>
+            <td>{{ f.student_no }}</td>
             <td>{{ f.description }}</td>
             <td>{{ f.date }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="empty">No feedback submitted yet.</td></tr>
+        <tr><td colspan="5" class="empty">No feedback submitted yet.</td></tr>
         {% endfor %}
     </tbody>
 </table>

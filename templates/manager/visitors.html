@@ -9,7 +9,7 @@
 </div>
 <table>
     <thead>
-        <tr><th>#</th><th>Visitor</th><th>Visiting</th><th>Date</th><th>Registered By</th></tr>
+        <tr><th>#</th><th>Visitor</th><th>Visiting</th><th>Student ID</th><th>Date</th><th>Registered By</th><th>Staff ID</th></tr>
     </thead>
     <tbody>
         {% for v in visitors %}
@@ -17,11 +17,13 @@
             <td>{{ loop.index }}</td>
             <td>{{ v.visitor_name }}</td>
             <td>{{ v.student_name }}</td>
+            <td>{{ v.student_no }}</td>
             <td>{{ v.visit_date }}</td>
             <td>{{ v.registered_by or '-' }}</td>
+            <td>{{ v.staff_no or '-' }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="empty">No visitors registered yet.</td></tr>
+        <tr><td colspan="7" class="empty">No visitors registered yet.</td></tr>
         {% endfor %}
     </tbody>
 </table>

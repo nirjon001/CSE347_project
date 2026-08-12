@@ -47,11 +47,12 @@
 <div class="section">
     <h2>Staff Members</h2>
     <table>
-        <thead><tr><th>#</th><th>Name</th><th>Username</th><th>Designation</th><th>Salary</th><th>Actions</th></tr></thead>
+        <thead><tr><th>#</th><th>Staff ID</th><th>Name</th><th>Username</th><th>Designation</th><th>Salary</th><th>Actions</th></tr></thead>
         <tbody>
             {% for st in staff_members %}
             <tr>
                 <td>{{ loop.index }}</td>
+                <td>{{ st.staff_no }}</td>
                 <td>{{ st.name }}</td>
                 <td>{{ st.username }}</td>
                 <td>{{ st.designation }}</td>
@@ -63,7 +64,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="6" class="empty">No staff members yet.</td></tr>
+            <tr><td colspan="7" class="empty">No staff members yet.</td></tr>
             {% endfor %}
         </tbody>
     </table>

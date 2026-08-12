@@ -24,10 +24,10 @@
                     <label for="target_id">Person</label>
                     <select id="target_id" name="student_id">
                         {% for s in students %}
-                        <option value="{{ s.student_id }}">Student: {{ s.name }}</option>
+                        <option value="{{ s.student_id }}">Student: {{ s.name }} ({{ s.student_no }})</option>
                         {% endfor %}
                         {% for st in staff_members %}
-                        <option value="{{ st.staff_id }}">Staff: {{ st.name }}</option>
+                        <option value="{{ st.staff_id }}">Staff: {{ st.name }} ({{ st.staff_no }})</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -50,14 +50,115 @@
 </div>
 
 <div class="section">
+    <h2>View / Edit Attendance by Person</h2>
+    <div class="form-card wide">
+        <form method="get" class="form-row">
+            <div class="form-group">
+                <label for="person_type">Type</label>
+                <select id="person_type" name="person_type">
+                    <option value="student" {{ 'selected' if person_type == 'student' }}>Student</option>
+                    <option value="staff" {{ 'selected' if person_type == 'staff' }}>Staff</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="person_id">Person</label>
+                <select id="person_id" name="person_id" required>
+                    <option value="">-- Choose --</option>
+                    {% for s in students %}
+                    <option value="{{ s.student_id }}"
+                            {% if person_type == 'student' and person and person.student_id == s.student_id %}selected{% endif %}>
+                        Student: {{ s.name }} ({{ s.student_no }})
+                    </option>
+                    {% endfor %}
+                    {% for st in staff_members %}
+                    <option value="{{ st.staff_id }}"
+                            {% if person_type == 'staff' and person and person.staff_id == st.staff_id %}selected{% endif %}>
+                        Staff: {{ st.name }} ({{ st.staff_no }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="from_date">From (optional)</label>
+                <input type="date" id="from_date" name="from_date" value="{{ from_date }}">
+            </div>
+            <div class="form-group">
+                <label for="to_date">To (optional)</label>
+                <input type="date" id="to_date" name="to_date" value="{{ to_date }}">
+            </div>
+            <div class="form-group" style="align-self:flex-end">
+                <button type="submit" class="btn btn-primary">View</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if person %}
+<div class="section">
+    <h2>{{ 'Student' if person_type == 'student' else 'Staff' }} Attendance — {{ person.name }}
+        ({{ person.student_no if person_type == 'student' else person.staff_no }})</h2>
+    <div class="cards">
+        <div class="card"><div class="label">Present Days</div><div class="value">{{ person_stats.present }}</div></div>
+        <div class="card"><div class="label">Absent Days</div><div class="value">{{ person_stats.absent }}</div></div>
+        <div class="card"><div class="label">Leave Days</div><div class="value">{{ person_stats.leave }}</div></div>
+        <div class="card"><div class="label">Attendance Rate</div><div class="value">{{ person_stats.rate }}%</div></div>
+    </div>
+    <div class="chart-grid">
+        <div class="chart-card">
+            <h3>Status Split</h3>
+            <canvas id="personDonut"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Daily Trend</h3>
+            <canvas id="personTrend"></canvas>
+        </div>
+    </div>
+    <table>
+        <thead><tr><th>#</th><th>Date</th><th>Status</th><th>Edit</th></tr></thead>
+        <tbody>
+            {% for r in person_records %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ r.date }}</td>
+                <td>
+                    {% if r.status == 'Present' %}<span class="badge badge-green">Present</span>
+                    {% elif r.status == 'Absent' %}<span class="badge badge-red">Absent</span>
+                    {% else %}<span class="badge badge-blue">Leave</span>{% endif %}
+                </td>
+                <td>
+                    <form method="post" action="{{ url_for('manager_attendance_update') }}" class="form-row" style="gap:6px">
+                        <input type="hidden" name="person_type" value="{{ person_type }}">
+                        <input type="hidden" name="person_id" value="{{ person.student_id if person_type == 'student' else person.staff_id }}">
+                        <input type="hidden" name="att_date" value="{{ r.date }}">
+                        <input type="hidden" name="from_date" value="{{ from_date }}">
+                        <input type="hidden" name="to_date" value="{{ to_date }}">
+                        <select name="status" style="padding:5px;font-size:13px">
+                            <option value="Present" {{ 'selected' if r.status == 'Present' }}>Present</option>
+                            <option value="Absent" {{ 'selected' if r.status == 'Absent' }}>Absent</option>
+                            <option value="Leave" {{ 'selected' if r.status == 'Leave' }}>Leave</option>
+                        </select>
+                        <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="empty">No attendance records for this person in the selected range.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="section">
     <h2>Recent Student Attendance</h2>
     <table>
-        <thead><tr><th>#</th><th>Student</th><th>Date</th><th>Status</th></tr></thead>
+        <thead><tr><th>#</th><th>Student</th><th>Student ID</th><th>Date</th><th>Status</th></tr></thead>
         <tbody>
             {% for a in student_attendance %}
             <tr>
                 <td>{{ loop.index }}</td>
                 <td>{{ a.name }}</td>
+                <td>{{ a.student_no }}</td>
                 <td>{{ a.date }}</td>
                 <td>
                     {% if a.status == 'Present' %}<span class="badge badge-green">Present</span>
@@ -66,7 +167,7 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="4" class="empty">No student attendance recorded yet.</td></tr>
+            <tr><td colspan="5" class="empty">No student attendance recorded yet.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -75,12 +176,13 @@
 <div class="section">
     <h2>Recent Staff Attendance</h2>
     <table>
-        <thead><tr><th>#</th><th>Staff</th><th>Date</th><th>Status</th></tr></thead>
+        <thead><tr><th>#</th><th>Staff</th><th>Staff ID</th><th>Date</th><th>Status</th></tr></thead>
         <tbody>
             {% for a in staff_attendance %}
             <tr>
                 <td>{{ loop.index }}</td>
                 <td>{{ a.name }}</td>
+                <td>{{ a.staff_no }}</td>
                 <td>{{ a.date }}</td>
                 <td>
                     {% if a.status == 'Present' %}<span class="badge badge-green">Present</span>
@@ -89,9 +191,54 @@
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="4" class="empty">No staff attendance recorded yet.</td></tr>
+            <tr><td colspan="5" class="empty">No staff attendance recorded yet.</td></tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+
+{% block scripts %}
+{% if person %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var donut = {{ person_donut|tojson }};
+    var trend = {{ person_trend|tojson }};
+    if (document.getElementById('personDonut')) {
+        new Chart(document.getElementById('personDonut'), {
+            type: 'doughnut',
+            data: {
+                labels: donut.labels,
+                datasets: [{ data: donut.data, backgroundColor: ['#27ae60', '#e74c3c', '#3498db'], borderWidth: 2 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+    if (document.getElementById('personTrend')) {
+        new Chart(document.getElementById('personTrend'), {
+            type: 'bar',
+            data: {
+                labels: trend.labels,
+                datasets: [
+                    { label: 'Present', data: trend.present, backgroundColor: '#27ae60' },
+                    { label: 'Absent', data: trend.absent, backgroundColor: '#e74c3c' },
+                    { label: 'Leave', data: trend.leave, backgroundColor: '#3498db' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}
 {% endblock %}

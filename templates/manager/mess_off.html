@@ -9,13 +9,14 @@
 </div>
 <table>
     <thead>
-        <tr><th>#</th><th>Student</th><th>Start</th><th>End</th><th>Status</th><th>Action</th></tr>
+        <tr><th>#</th><th>Student</th><th>Student ID</th><th>Start</th><th>End</th><th>Status</th><th>Action</th></tr>
     </thead>
     <tbody>
         {% for r in requests %}
         <tr>
             <td>{{ loop.index }}</td>
             <td>{{ r.student_name }}</td>
+            <td>{{ r.student_no }}</td>
             <td>{{ r.start_date }}</td>
             <td>{{ r.end_date }}</td>
             <td>
@@ -34,7 +35,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="empty">No mess off requests yet.</td></tr>
+        <tr><td colspan="7" class="empty">No mess off requests yet.</td></tr>
         {% endfor %}
     </tbody>
 </table>

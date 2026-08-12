@@ -19,6 +19,9 @@ Commands:
   init        One-time import: create the database if needed, then import
               hostel_management_schema.sql + seed_data.sql.      (WEB side)
   drop        DROP the web database.                             (WEB side)
+  migrate     Idempotently upgrade the web database to the current
+              schema WITHOUT dropping data (adds student_no / staff_no).
+              Use this instead of re-running init on a live DB.    (WEB side)
   push        Dump the LOCAL XAMPP database (mysqldump) and import it into
               the web database. (LOCAL -> WEB)
   pull        Dump the web database and import it into the local XAMPP DB.
@@ -274,6 +277,67 @@ def cmd_drop(cfg):
     print(f"Dropped database `{db}`.")
 
 
+# ---------------------------------------------------------------------------
+# migrate_ids(conn): idempotent upgrade to add student_no / staff_no.
+# Uses information_schema guards instead of MariaDB-only "ADD COLUMN IF NOT
+# EXISTS", so it runs safely on BOTH the local XAMPP MariaDB and the Aiven
+# MySQL 8 web database, and can be re-run any number of times.
+# ---------------------------------------------------------------------------
+ID_COLUMNS = [
+    ("students", "student_no", "STU", "student_id"),
+    ("staff",    "staff_no",   "STF", "staff_id"),
+]
+
+
+def migrate_ids(conn):
+    cur = conn.cursor()
+
+    def has_column(table, col):
+        cur.execute(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+            (table, col),
+        )
+        return cur.fetchone()[0] > 0
+
+    def has_index(table, index):
+        cur.execute(
+            "SELECT COUNT(*) FROM information_schema.STATISTICS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s",
+            (table, index),
+        )
+        return cur.fetchone()[0] > 0
+
+    for table, col, prefix, id_col in ID_COLUMNS:
+        if not has_column(table, col):
+            cur.execute(f"ALTER TABLE `{table}` ADD COLUMN `{col}` VARCHAR(20) NULL")
+            print(f"  added {table}.{col}")
+        cur.execute(
+            f"UPDATE `{table}` SET `{col}` = CONCAT('{prefix}-', LPAD(`{id_col}`, 4, '0')) "
+            f"WHERE `{col}` IS NULL OR `{col}` = ''"
+        )
+        cur.execute(f"ALTER TABLE `{table}` MODIFY `{col}` VARCHAR(20) NOT NULL")
+        if not has_index(table, f"uq_{table}_{col}"):
+            cur.execute(f"ALTER TABLE `{table}` ADD UNIQUE KEY `uq_{table}_{col}` (`{col}`)")
+            print(f"  added unique key uq_{table}_{col}")
+        print(f"  {table}.{col} backfilled and NOT NULL (sample: {prefix}-0001)")
+    cur.close()
+
+
+def cmd_migrate(cfg):
+    db = cfg.get("DB_NAME", "hostel_management")
+    conn = connect(cfg, database=db)
+    conn.autocommit = True
+    try:
+        migrate_ids(conn)
+    except Exception as exc:
+        print(f"FAILED: {exc}")
+        sys.exit(1)
+    finally:
+        conn.close()
+    print(f"SUCCESS: database `{db}` upgraded to the current schema.")
+
+
 def dump_local(cfg):
     mysqldump = cfg.get("MYSQLDUMP_EXE", r"C:\xampp\mysql\bin\mysqldump.exe")
     if not Path(mysqldump).is_file():
@@ -402,7 +466,7 @@ def cmd_pull(cfg):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["init", "drop", "push", "pull"])
+    parser.add_argument("command", choices=["init", "drop", "migrate", "push", "pull"])
     parser.add_argument("--env", default=str(SCRIPTS / ".web-db.env"))
     args = parser.parse_args()
 
@@ -411,6 +475,8 @@ def main():
         cmd_init(cfg)
     elif args.command == "drop":
         cmd_drop(cfg)
+    elif args.command == "migrate":
+        cmd_migrate(cfg)
     elif args.command == "push":
         cmd_push(cfg)
     elif args.command == "pull":

@@ -30,10 +30,10 @@
                     <label for="target_id">Person</label>
                     <select id="target_id" name="target_id" required>
                         {% for s in students %}
-                        <option value="{{ s.student_id }}" data-type="student">Student: {{ s.name }}</option>
+                        <option value="{{ s.student_id }}" data-type="student">Student: {{ s.name }} ({{ s.student_no }})</option>
                         {% endfor %}
                         {% for st in staff_members %}
-                        <option value="{{ st.staff_id }}" data-type="staff">Staff: {{ st.name }}</option>
+                        <option value="{{ st.staff_id }}" data-type="staff">Staff: {{ st.name }} ({{ st.staff_no }})</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -71,10 +71,10 @@
                     <label for="recipient_id">Recipient</label>
                     <select id="recipient_id" name="recipient_id" required>
                         {% for s in students %}
-                        <option value="{{ s.student_id }}" data-type="student">Student: {{ s.name }}</option>
+                        <option value="{{ s.student_id }}" data-type="student">Student: {{ s.name }} ({{ s.student_no }})</option>
                         {% endfor %}
                         {% for st in staff_members %}
-                        <option value="{{ st.staff_id }}" data-type="staff">Staff: {{ st.name }}</option>
+                        <option value="{{ st.staff_id }}" data-type="staff">Staff: {{ st.name }} ({{ st.staff_no }})</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -94,12 +94,13 @@
             <button type="button" class="chip" data-filter="Resolved">Resolved ({{ violations|selectattr('status', 'equalto', 'Resolved')|list|length }})</button>
         </div>
         <table>
-            <thead><tr><th>#</th><th>Person</th><th>Type</th><th>Description</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>#</th><th>Person</th><th>Person ID</th><th>Type</th><th>Description</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
                 {% for v in violations %}
                 <tr data-status="{{ v.status }}">
                     <td>{{ loop.index }}</td>
                     <td>{{ v.student_name or v.staff_name }}</td>
+                    <td>{{ v.student_no or v.staff_no }}</td>
                     <td>{{ 'Student' if v.student_id else 'Staff' }}</td>
                     <td>{{ v.description }}</td>
                     <td>{{ v.date }}</td>
@@ -125,7 +126,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="7" class="empty">No violations recorded.</td></tr>
+                <tr><td colspan="8" class="empty">No violations recorded.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

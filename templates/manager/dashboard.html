@@ -22,50 +22,122 @@
 </div>
 
 <div class="section">
-    <h2>Recent Complaints</h2>
-    <table>
-        <thead>
-            <tr><th>#</th><th>Student</th><th>Description</th><th>Date</th><th>Status</th></tr>
-        </thead>
-        <tbody>
-            {% for c in recent_complaints %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ c.student_name }}</td>
-                <td>{{ c.description }}</td>
-                <td>{{ c.date }}</td>
-                <td>
-                    {% if c.status == 'Pending' %}<span class="badge badge-yellow">Pending</span>
-                    {% elif c.status == 'In Progress' %}<span class="badge badge-blue">In Progress</span>
-                    {% else %}<span class="badge badge-green">Resolved</span>{% endif %}
-                </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="5" class="empty">No complaints yet.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <h2>Attendance Overview</h2>
+    <div class="chart-grid">
+        <div class="chart-card">
+            <h3>Today</h3>
+            <canvas id="todayDonut"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Last 14 Days</h3>
+            <canvas id="trendChart"></canvas>
+        </div>
+    </div>
 </div>
 
 <div class="section">
-    <h2>Recent Violations</h2>
-    <table>
-        <thead>
-            <tr><th>#</th><th>Person</th><th>Type</th><th>Description</th><th>Date</th></tr>
-        </thead>
-        <tbody>
-            {% for v in recent_violations %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ v.student_name or v.staff_name }}</td>
-                <td>{{ 'Student' if v.student_id else 'Staff' }}</td>
-                <td>{{ v.description }}</td>
-                <td>{{ v.date }}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="5" class="empty">No violations recorded.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="tab-complaints" type="button">Recent Complaints</button>
+        <button class="tab-btn" data-tab="tab-violations" type="button">Recent Violations</button>
+    </div>
+
+    <div id="tab-complaints" class="tab-panel active">
+        <table>
+            <thead>
+                <tr><th>#</th><th>Student</th><th>Description</th><th>Date</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                {% for c in recent_complaints %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ c.student_name }}</td>
+                    <td>{{ c.description }}</td>
+                    <td>{{ c.date }}</td>
+                    <td>
+                        {% if c.status == 'Pending' %}<span class="badge badge-yellow">Pending</span>
+                        {% elif c.status == 'In Progress' %}<span class="badge badge-blue">In Progress</span>
+                        {% else %}<span class="badge badge-green">Resolved</span>{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="empty">No complaints yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div id="tab-violations" class="tab-panel">
+        <table>
+            <thead>
+                <tr><th>#</th><th>Person</th><th>Type</th><th>Description</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+                {% for v in recent_violations %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ v.student_name or v.staff_name }}</td>
+                    <td>{{ 'Student' if v.student_id else 'Staff' }}</td>
+                    <td>{{ v.description }}</td>
+                    <td>{{ v.date }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="empty">No violations recorded.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+            document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+            btn.classList.add('active');
+            var panel = document.getElementById(btn.dataset.tab);
+            if (panel) panel.classList.add('active');
+        });
+    });
+    var donut = {{ today_donut|tojson }};
+    var trend = {{ trend14|tojson }};
+    var donutColors = ['#27ae60', '#e74c3c', '#3498db', '#95a5a6'];
+    if (document.getElementById('todayDonut')) {
+        new Chart(document.getElementById('todayDonut'), {
+            type: 'doughnut',
+            data: {
+                labels: donut.labels,
+                datasets: [{ data: donut.data, backgroundColor: donutColors, borderWidth: 2 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+    if (document.getElementById('trendChart')) {
+        new Chart(document.getElementById('trendChart'), {
+            type: 'bar',
+            data: {
+                labels: trend.labels,
+                datasets: [
+                    { label: 'Present', data: trend.present, backgroundColor: '#27ae60' },
+                    { label: 'Absent', data: trend.absent, backgroundColor: '#e74c3c' },
+                    { label: 'Leave', data: trend.leave, backgroundColor: '#3498db' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}
 {% endblock %}

@@ -14,68 +14,111 @@
 </div>
 
 <div class="section">
-    <h2>Hostels</h2>
-    <table>
-        <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Location</th><th>Rooms</th><th>Geo-fence</th><th>Actions</th></tr></thead>
-        <tbody>
-            {% for h in hostels %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ h.hostel_name }}</td>
-                <td>
-                    {% if h.gender == 'Male' %}<span class="badge badge-blue">{{ h.gender }}</span>
-                    {% else %}<span class="badge badge-yellow">{{ h.gender }}</span>{% endif %}
-                </td>
-                <td>{{ h.location or '-' }}</td>
-                <td>{{ h.total_rooms }}</td>
-                <td>
-                    {% if h.lat is not none and h.lng is not none %}
-                        {{ h.radius_m }} m <span class="muted">({{ h.lat }}, {{ h.lng }})</span>
-                    {% else %}<span class="muted">Not set</span>{% endif %}
-                </td>
-                <td>
-                    <a class="btn btn-ghost btn-sm" href="{{ url_for('edit_hostel', hostel_id=h.hostel_id) }}">Edit</a>
-                    <form method="post" action="{{ url_for('delete_hostel', hostel_id=h.hostel_id) }}" data-confirm="Delete hostel '{{ h.hostel_name }}' and all its rooms?" style="display:inline-block;">
-                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="7" class="empty">No hostels yet.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="tab-hostels" type="button">Hostels</button>
+        <button class="tab-btn" data-tab="tab-rooms" type="button">Rooms</button>
+    </div>
+
+    <div id="tab-hostels" class="tab-panel active">
+        <table>
+            <thead><tr><th>#</th><th>Name</th><th>Gender</th><th>Location</th><th>Rooms</th><th>Geo-fence</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for h in hostels %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ h.hostel_name }}</td>
+                    <td>
+                        {% if h.gender == 'Male' %}<span class="badge badge-blue">{{ h.gender }}</span>
+                        {% else %}<span class="badge badge-yellow">{{ h.gender }}</span>{% endif %}
+                    </td>
+                    <td>{{ h.location or '-' }}</td>
+                    <td>{{ h.total_rooms }}</td>
+                    <td>
+                        {% if h.lat is not none and h.lng is not none %}
+                            {{ h.radius_m }} m <span class="muted">({{ h.lat }}, {{ h.lng }})</span>
+                        {% else %}<span class="muted">Not set</span>{% endif %}
+                    </td>
+                    <td class="actions-cell">
+                        <a class="btn btn-ghost btn-sm" href="{{ url_for('edit_hostel', hostel_id=h.hostel_id) }}">Edit</a>
+                        <form method="post" action="{{ url_for('delete_hostel', hostel_id=h.hostel_id) }}" data-confirm="Delete hostel '{{ h.hostel_name }}' and all its rooms?" style="display:inline-block;">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="empty">No hostels yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div id="tab-rooms" class="tab-panel">
+        <table>
+            <thead>
+                <tr><th></th><th>Room</th><th>Hostel</th><th>Capacity</th><th>Available Beds</th><th>Occupants</th><th>Availability</th></tr>
+            </thead>
+            <tbody>
+                {% for r in rooms %}
+                <tr class="room-group" data-group="{{ r.room_id }}">
+                    <td><button type="button" class="btn btn-ghost btn-sm room-toggle">&#9656;</button></td>
+                    <td>{{ r.room_no }}</td>
+                    <td>{{ r.hostel_name }} <span class="muted">({{ r.gender }})</span></td>
+                    <td>{{ r.total_beds }}</td>
+                    <td>{{ r.available_beds }}</td>
+                    <td>{{ r.occupants }}</td>
+                    <td>
+                        {% if r.available_beds > 0 %}<span class="badge badge-green">Available</span>
+                        {% else %}<span class="badge badge-red">Full</span>{% endif %}
+                    </td>
+                </tr>
+                <tr class="room-detail" data-group="{{ r.room_id }}" hidden>
+                    <td colspan="7">
+                        <table class="inner-table">
+                            <thead>
+                                <tr><th>Student No</th><th>Name</th><th>Email</th><th>Phone</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for s in r.students %}
+                                <tr>
+                                    <td>{{ s.student_no }}</td>
+                                    <td>{{ s.name }}</td>
+                                    <td>{{ s.email or '-' }}</td>
+                                    <td>{{ s.phone or '-' }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="empty">No students in this room.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="empty">No rooms found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<div class="section">
-    <h2>Rooms</h2>
-    <table>
-        <thead>
-            <tr><th>#</th><th>Room</th><th>Hostel</th><th>Capacity</th><th>Available Beds</th><th>Occupants</th><th>Availability</th></tr>
-        </thead>
-        <tbody>
-            {% for r in rooms %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ r.room_no }}</td>
-                <td>{{ r.hostel_name }} <span class="muted">({{ r.gender }})</span></td>
-                <td>{{ r.total_beds }}</td>
-                <td>{{ r.available_beds }}</td>
-                <td>
-                    {{ r.occupants }}
-                    {% if r.occupants > 0 and r.occupant_names %}
-                    <div class="muted room-occupants">{{ r.occupant_names }}</div>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if r.available_beds > 0 %}<span class="badge badge-green">Available</span>
-                    {% else %}<span class="badge badge-red">Full</span>{% endif %}
-                </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="7" class="empty">No rooms found.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<script>
+(function () {
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+            document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+            btn.classList.add('active');
+            var panel = document.getElementById(btn.dataset.tab);
+            if (panel) panel.classList.add('active');
+        });
+    });
+    document.querySelectorAll('.room-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var tr = btn.closest('tr');
+            var detail = document.querySelector('.room-detail[data-group="' + tr.dataset.group + '"]');
+            if (detail) detail.hidden = !detail.hidden;
+            btn.innerHTML = (detail && !detail.hidden) ? '&#9662;' : '&#9656;';
+        });
+    });
+})();
+</script>
 {% endblock %}

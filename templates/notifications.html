@@ -14,9 +14,24 @@
 </div>
 
 <div class="section">
+    <div class="chips">
+        <button type="button" class="chip active" data-filter="all">All ({{ notifications|length }})</button>
+        {% if unread > 0 %}
+        <button type="button" class="chip" data-filter="unread">Unread ({{ unread }})</button>
+        {% endif %}
+        {% for cat, count in cat_counts.items() %}
+        {% if cat != 'Other' %}
+        <button type="button" class="chip" data-filter="{{ cat|lower }}">{{ cat }} ({{ count }})</button>
+        {% endif %}
+        {% endfor %}
+        {% if cat_counts.get('Other') %}
+        <button type="button" class="chip" data-filter="other">Other ({{ cat_counts['Other'] }})</button>
+        {% endif %}
+    </div>
+
     <div class="notif-list">
         {% for n in notifications %}
-        <div class="notif-item {{ 'unread' if not n.is_read else '' }}">
+        <div class="notif-item {{ 'unread' if not n.is_read else '' }}" data-cat="{{ n.category|lower }}">
             <div class="notif-body">
                 {% if n.link %}
                 <a class="notif-title" href="{{ url_for('notification_read', notification_id=n.notification_id) }}">{{ n.title }}</a>
@@ -32,4 +47,29 @@
         {% endfor %}
     </div>
 </div>
+
+<script>
+(function () {
+    var chips = document.querySelectorAll('.chip[data-filter]');
+    var items = document.querySelectorAll('.notif-item[data-cat]');
+    function apply() {
+        var active = document.querySelector('.chip[data-filter].active');
+        var f = active ? active.dataset.filter : 'all';
+        items.forEach(function (item) {
+            var show;
+            if (f === 'all') show = true;
+            else if (f === 'unread') show = item.classList.contains('unread');
+            else show = item.dataset.cat === f;
+            item.style.display = show ? '' : 'none';
+        });
+    }
+    chips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            chips.forEach(function (c) { c.classList.remove('active'); });
+            chip.classList.add('active');
+            apply();
+        });
+    });
+})();
+</script>
 {% endblock %}

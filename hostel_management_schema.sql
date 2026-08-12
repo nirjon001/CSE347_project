@@ -38,10 +38,12 @@ CREATE TABLE managers (
 
 CREATE TABLE staff (
     staff_id     INT AUTO_INCREMENT PRIMARY KEY,
+    staff_no     VARCHAR(20) NOT NULL,    -- human-friendly unique ID, e.g. STF-0001
     user_id      INT NOT NULL UNIQUE,
     name         VARCHAR(100) NOT NULL,
     designation  VARCHAR(50)  NOT NULL,   -- e.g. Caretaker, Cook, Watchman, Guard
     salary       DECIMAL(10,2) NOT NULL,
+    UNIQUE KEY uq_staff_staff_no (staff_no),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -68,6 +70,7 @@ CREATE TABLE rooms (
 
 CREATE TABLE students (
     student_id   INT AUTO_INCREMENT PRIMARY KEY,
+    student_no   VARCHAR(20) NOT NULL,    -- human-friendly unique ID, e.g. STU-0001
     user_id      INT NOT NULL UNIQUE,
     name         VARCHAR(100) NOT NULL,
     email        VARCHAR(100) UNIQUE,
@@ -75,6 +78,7 @@ CREATE TABLE students (
     address      VARCHAR(255),
     gender       VARCHAR(15),
     room_id      INT NULL,                  -- nullable: student may not be allocated yet
+    UNIQUE KEY uq_students_student_no (student_no),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (room_id) REFERENCES rooms(room_id) ON DELETE SET NULL
 ) ENGINE=InnoDB;

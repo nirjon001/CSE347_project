@@ -233,3 +233,49 @@ ALTER TABLE invoices
 -- ---------------------------------------------------------------------
 UPDATE hostels h
 SET h.total_rooms = (SELECT COUNT(*) FROM rooms r WHERE r.hostel_id = h.hostel_id);
+
+-- ---------------------------------------------------------------------
+-- 10) Human-friendly unique IDs: students.student_no + staff.staff_no
+--     (e.g. STU-0001 / STF-0001). Added nullable, backfilled from the
+--     primary key, then made NOT NULL + unique. Idempotent on MariaDB
+--     ("ADD COLUMN IF NOT EXISTS"). The web copy is MySQL 8 and uses
+--     `python scripts/web_db.py migrate` (information_schema-guarded).
+-- ---------------------------------------------------------------------
+ALTER TABLE students ADD COLUMN IF NOT EXISTS student_no VARCHAR(20) NULL AFTER student_id;
+ALTER TABLE staff    ADD COLUMN IF NOT EXISTS staff_no    VARCHAR(20) NULL AFTER staff_id;
+
+UPDATE students SET student_no = CONCAT('STU-', LPAD(student_id, 4, '0'))
+WHERE student_no IS NULL OR student_no = '';
+UPDATE staff SET staff_no = CONCAT('STF-', LPAD(staff_id, 4, '0'))
+WHERE staff_no IS NULL OR staff_no = '';
+
+ALTER TABLE students MODIFY student_no VARCHAR(20) NOT NULL;
+ALTER TABLE staff    MODIFY staff_no    VARCHAR(20) NOT NULL;
+
+DROP PROCEDURE IF EXISTS migrate_student_no_unique;
+DELIMITER //
+CREATE PROCEDURE migrate_student_no_unique()
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.STATISTICS
+                   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'students'
+                     AND INDEX_NAME = 'uq_students_student_no') THEN
+        ALTER TABLE students ADD UNIQUE KEY uq_students_student_no (student_no);
+    END IF;
+END//
+DELIMITER ;
+CALL migrate_student_no_unique();
+DROP PROCEDURE IF EXISTS migrate_student_no_unique;
+
+DROP PROCEDURE IF EXISTS migrate_staff_no_unique;
+DELIMITER //
+CREATE PROCEDURE migrate_staff_no_unique()
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.STATISTICS
+                   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'staff'
+                     AND INDEX_NAME = 'uq_staff_staff_no') THEN
+        ALTER TABLE staff ADD UNIQUE KEY uq_staff_staff_no (staff_no);
+    END IF;
+END//
+DELIMITER ;
+CALL migrate_staff_no_unique();
+DROP PROCEDURE IF EXISTS migrate_staff_no_unique;

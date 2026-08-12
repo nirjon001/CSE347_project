@@ -46,6 +46,26 @@
 {% endif %}
 
 <div class="section">
+    <h2>My Overview</h2>
+    <div class="cards">
+        <div class="card"><div class="label">Present Days</div><div class="value">{{ my_stats.present }}</div></div>
+        <div class="card"><div class="label">Absent Days</div><div class="value">{{ my_stats.absent }}</div></div>
+        <div class="card"><div class="label">Leave Days</div><div class="value">{{ my_stats.leave }}</div></div>
+        <div class="card"><div class="label">Attendance Rate</div><div class="value">{{ my_stats.rate }}%</div></div>
+    </div>
+    <div class="chart-grid">
+        <div class="chart-card">
+            <h3>Status Split</h3>
+            <canvas id="myDonut"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Last 30 Days</h3>
+            <canvas id="myTrend"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="section">
     <h2>Attendance History</h2>
     <table>
         <thead><tr><th>#</th><th>Date</th><th>Status</th></tr></thead>
@@ -178,4 +198,47 @@
     }
 })();
 </script>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var donut = {{ my_donut|tojson }};
+    var trend = {{ my_trend|tojson }};
+    if (document.getElementById('myDonut')) {
+        new Chart(document.getElementById('myDonut'), {
+            type: 'doughnut',
+            data: {
+                labels: donut.labels,
+                datasets: [{ data: donut.data, backgroundColor: ['#27ae60', '#e74c3c', '#3498db'], borderWidth: 2 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+    if (document.getElementById('myTrend')) {
+        new Chart(document.getElementById('myTrend'), {
+            type: 'bar',
+            data: {
+                labels: trend.labels,
+                datasets: [
+                    { label: 'Present', data: trend.present, backgroundColor: '#27ae60' },
+                    { label: 'Absent', data: trend.absent, backgroundColor: '#e74c3c' },
+                    { label: 'Leave', data: trend.leave, backgroundColor: '#3498db' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}
 {% endblock %}

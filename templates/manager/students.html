@@ -10,12 +10,13 @@
 </div>
 <table>
     <thead>
-        <tr><th>#</th><th>Name</th><th>Username</th><th>Email</th><th>Phone</th><th>Gender</th><th>Room</th><th>Actions</th></tr>
+        <tr><th>#</th><th>Student ID</th><th>Name</th><th>Username</th><th>Email</th><th>Phone</th><th>Gender</th><th>Room</th><th>Actions</th></tr>
     </thead>
     <tbody>
         {% for s in students %}
         <tr>
             <td>{{ loop.index }}</td>
+            <td>{{ s.student_no }}</td>
             <td>{{ s.name }}</td>
             <td>{{ s.username }}</td>
             <td>{{ s.email or '-' }}</td>
@@ -29,7 +30,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="empty">No students registered yet.</td></tr>
+        <tr><td colspan="9" class="empty">No students registered yet.</td></tr>
         {% endfor %}
     </tbody>
 </table>

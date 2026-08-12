@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from functools import wraps
 from math import asin, cos, radians, sin, sqrt
 
@@ -112,6 +112,51 @@ def notify_staff(staff_id, title, message, link=None):
         notify_user(row['user_id'], title, message, link)
 
 
+def notify_all_staff(title, message, link=None):
+    rows = query('SELECT user_id FROM staff')
+    for row in rows:
+        notify_user(row['user_id'], title, message, link)
+
+
+ATT_STATUS = ('Present', 'Absent', 'Leave')
+ATT_COLORS = {'Present': '#27ae60', 'Absent': '#e74c3c', 'Leave': '#3498db', 'Not marked': '#95a5a6'}
+
+
+def _attendance_stats(records):
+    counts = {s: 0 for s in ATT_STATUS}
+    for r in records:
+        if r.get('status') in counts:
+            counts[r['status']] += 1
+    total = sum(counts.values())
+    rate = round(counts['Present'] / total * 100, 1) if total else 0.0
+    return counts, total, rate
+
+
+def _donut_payload(labels, values):
+    return {'labels': labels, 'data': values}
+
+
+def _attendance_trend(records, days=14, end=None):
+    if end is None:
+        end = date.today()
+    start = end - timedelta(days=days - 1)
+    by_date = {}
+    for r in records:
+        key = str(r['date'])
+        cell = by_date.setdefault(key, {'Present': 0, 'Absent': 0, 'Leave': 0})
+        if r.get('status') in cell:
+            cell[r['status']] += r.get('count', 1)
+    labels, present, absent, leave = [], [], [], []
+    for i in range(days):
+        d = start + timedelta(days=i)
+        labels.append(d.strftime('%d %b'))
+        cell = by_date.get(d.isoformat(), {'Present': 0, 'Absent': 0, 'Leave': 0})
+        present.append(cell['Present'])
+        absent.append(cell['Absent'])
+        leave.append(cell['Leave'])
+    return {'labels': labels, 'present': present, 'absent': absent, 'leave': leave}
+
+
 def distance_m(lat1, lng1, lat2, lng2):
     radius = 6371000.0
     phi1, phi2 = radians(lat1), radians(lat2)
@@ -189,6 +234,29 @@ def change_password():
     return render_template('auth/change_password.html')
 
 
+NOTIF_CATEGORIES = (
+    ('Complaints', ('complaint',)),
+    ('Mess Off', ('mess-off',)),
+    ('Feedback', ('feedback',)),
+    ('In / Out', ('student out', 'returned')),
+    ('Parcels', ('parcel',)),
+    ('Visitors', ('visitor',)),
+    ('Attendance', ('attendance',)),
+    ('Invoices', ('invoice',)),
+    ('Violations', ('violation',)),
+    ('Notices', ('notice',)),
+    ('Rooms', ('room allocated',)),
+)
+
+
+def _notif_category(title):
+    low = (title or '').lower()
+    for name, keys in NOTIF_CATEGORIES:
+        if any(k in low for k in keys):
+            return name
+    return 'Other'
+
+
 @app.route('/notifications')
 @login_required
 def notifications():
@@ -197,7 +265,13 @@ def notifications():
         'ORDER BY created_at DESC, notification_id DESC',
         (session['user_id'],),
     )
-    return render_template('notifications.html', notifications=notifs)
+    for n in notifs:
+        n['category'] = _notif_category(n['title'])
+    unread = sum(1 for n in notifs if not n['is_read'])
+    cat_counts = {}
+    for n in notifs:
+        cat_counts[n['category']] = cat_counts.get(n['category'], 0) + 1
+    return render_template('notifications.html', notifications=notifs, unread=unread, cat_counts=cat_counts)
 
 
 @app.route('/notifications/read/<int:notification_id>', methods=['GET', 'POST'])
@@ -251,9 +325,38 @@ def manager_dashboard():
         'LEFT JOIN staff st ON v.staff_id = st.staff_id '
         'ORDER BY v.date DESC, v.violation_id DESC LIMIT 5'
     )
+    today_str = date.today().isoformat()
+    today_counts = {s: 0 for s in ATT_STATUS}
+    for row in query(
+        'SELECT status, COUNT(*) AS c FROM student_attendance WHERE date = %s GROUP BY status',
+        (today_str,),
+    ):
+        today_counts[row['status']] += row['c']
+    for row in query(
+        'SELECT status, COUNT(*) AS c FROM staff_attendance WHERE date = %s GROUP BY status',
+        (today_str,),
+    ):
+        today_counts[row['status']] += row['c']
+    registered = stats['students'] + query('SELECT COUNT(*) AS c FROM staff', one=True)['c']
+    recorded = sum(today_counts.values())
+    today_donut = _donut_payload(
+        ['Present', 'Absent', 'Leave', 'Not marked'],
+        [today_counts['Present'], today_counts['Absent'], today_counts['Leave'], max(registered - recorded, 0)],
+    )
+    trend_start = (date.today() - timedelta(days=13)).isoformat()
+    trend_records = query(
+        'SELECT date, status, COUNT(*) AS count FROM student_attendance WHERE date >= %s GROUP BY date, status',
+        (trend_start,),
+    )
+    trend_records += query(
+        'SELECT date, status, COUNT(*) AS count FROM staff_attendance WHERE date >= %s GROUP BY date, status',
+        (trend_start,),
+    )
+    trend14 = _attendance_trend(trend_records, days=14)
     return render_template(
         'manager/dashboard.html', stats=stats,
         recent_complaints=recent_complaints, recent_violations=recent_violations,
+        today_donut=today_donut, trend14=trend14,
     )
 
 
@@ -262,7 +365,7 @@ def manager_dashboard():
 @role_required('manager')
 def manager_students():
     students = query(
-        'SELECT s.student_id, s.name, s.email, s.phone, s.gender, u.username, r.room_no '
+        'SELECT s.student_id, s.student_no, s.name, s.email, s.phone, s.gender, u.username, r.room_no '
         'FROM students s JOIN users u ON s.user_id = u.user_id '
         'LEFT JOIN rooms r ON s.room_id = r.room_id ORDER BY s.student_id'
     )
@@ -290,10 +393,15 @@ def register_student():
                 'INSERT INTO users (username, password, role) VALUES (%s, %s, %s)',
                 (username, generate_password_hash(password), 'student'),
             )
+            next_no = query(
+                "SELECT AUTO_INCREMENT AS n FROM information_schema.TABLES "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'students'",
+                one=True,
+            )['n']
             execute(
-                'INSERT INTO students (user_id, name, email, phone, address, gender) '
-                'VALUES (%s, %s, %s, %s, %s, %s)',
-                (user_id, name, email, phone, address, gender),
+                'INSERT INTO students (student_no, user_id, name, email, phone, address, gender) '
+                'VALUES (%s, %s, %s, %s, %s, %s, %s)',
+                (f'STU-{next_no:04d}', user_id, name, email, phone, address, gender),
             )
             flash(f'Student "{name}" registered successfully.', 'success')
             return redirect(url_for('manager_students'))
@@ -337,11 +445,17 @@ def delete_student(student_id):
 def manager_rooms():
     rooms = query(
         'SELECT r.room_id, r.room_no, r.total_beds, r.available_beds, h.hostel_name, h.gender, '
-        '(SELECT COUNT(*) FROM students s WHERE s.room_id = r.room_id) AS occupants, '
-        '(SELECT GROUP_CONCAT(s.name ORDER BY s.name SEPARATOR ", ") FROM students s '
-        ' WHERE s.room_id = r.room_id) AS occupant_names '
+        '(SELECT COUNT(*) FROM students s WHERE s.room_id = r.room_id) AS occupants '
         'FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id ORDER BY r.room_id'
     )
+    room_students = {}
+    for row in query(
+        'SELECT s.room_id, s.student_id, s.student_no, s.name, s.email, s.phone '
+        'FROM students s WHERE s.room_id IS NOT NULL ORDER BY s.name'
+    ):
+        room_students.setdefault(row['room_id'], []).append(row)
+    for r in rooms:
+        r['students'] = room_students.get(r['room_id'], [])
     hostels = query(
         'SELECT h.hostel_id, h.hostel_name, h.location, h.gender, h.lat, h.lng, h.radius_m, '
         '(SELECT COUNT(*) FROM rooms r WHERE r.hostel_id = h.hostel_id) AS total_rooms '
@@ -519,7 +633,7 @@ def allocate_room():
         room_id = request.form.get('room_id')
         student = query('SELECT gender FROM students WHERE student_id = %s', (student_id,), one=True)
         room = query(
-            'SELECT h.gender AS hostel_gender, h.hostel_name FROM rooms r '
+            'SELECT h.gender AS hostel_gender, h.hostel_name, r.room_no FROM rooms r '
             'JOIN hostels h ON r.hostel_id = h.hostel_id WHERE r.room_id = %s',
             (room_id,), one=True,
         )
@@ -534,6 +648,7 @@ def allocate_room():
             )
             return redirect(url_for('allocate_room'))
         conn = get_dedicated_connection()
+        allocated = False
         try:
             cur = conn.cursor(dictionary=True)
             cur.execute('SELECT available_beds FROM rooms WHERE room_id = %s FOR UPDATE', (room_id,))
@@ -544,6 +659,7 @@ def allocate_room():
                 cur.execute('UPDATE rooms SET available_beds = available_beds - 1 WHERE room_id = %s', (room_id,))
                 cur.execute('UPDATE students SET room_id = %s WHERE student_id = %s', (room_id, student_id))
                 conn.commit()
+                allocated = True
                 flash('Room allocated successfully.', 'success')
         except Exception:
             conn.rollback()
@@ -551,8 +667,14 @@ def allocate_room():
         finally:
             cur.close()
             conn.close()
+        if allocated:
+            notify_student(
+                student_id, 'Room allocated',
+                f'You have been allocated {room["room_no"]} in the {room["hostel_name"]} hostel.',
+                '/student/room',
+            )
         return redirect(url_for('allocate_room'))
-    unallocated = query('SELECT student_id, name, gender FROM students WHERE room_id IS NULL ORDER BY student_id')
+    unallocated = query('SELECT student_id, student_no, name, gender FROM students WHERE room_id IS NULL ORDER BY student_id')
     free_rooms = query(
         'SELECT r.room_id, r.room_no, r.available_beds, h.gender '
         'FROM rooms r JOIN hostels h ON r.hostel_id = h.hostel_id '
@@ -583,7 +705,7 @@ def manager_complaints():
         flash('Complaint status updated.', 'success')
         return redirect(url_for('manager_complaints'))
     complaints = query(
-        'SELECT c.*, s.name AS student_name, r.room_no, h.hostel_name '
+        'SELECT c.*, s.student_no, s.name AS student_name, r.room_no, h.hostel_name '
         'FROM complaints c JOIN students s ON c.student_id = s.student_id '
         'LEFT JOIN rooms r ON c.room_id = r.room_id '
         'LEFT JOIN hostels h ON r.hostel_id = h.hostel_id '
@@ -607,7 +729,7 @@ def _invoice_notification_message(created, due_date):
 
 def _invoice_receipt_data(invoice_id):
     return query(
-        'SELECT i.*, s.name AS student_name, r.room_no, h.hostel_name, h.location '
+        'SELECT i.*, s.name AS student_name, s.student_no, r.room_no, h.hostel_name, h.location '
         'FROM invoices i '
         'JOIN students s ON i.student_id = s.student_id '
         'LEFT JOIN rooms r ON s.room_id = r.room_id '
@@ -619,7 +741,7 @@ def _invoice_receipt_data(invoice_id):
 
 def _student_invoice_statement(student_id):
     student = query(
-        'SELECT s.student_id, s.name AS student_name, r.room_no, h.hostel_name, h.location '
+        'SELECT s.student_id, s.student_no, s.name AS student_name, r.room_no, h.hostel_name, h.location '
         'FROM students s '
         'LEFT JOIN rooms r ON s.room_id = r.room_id '
         'LEFT JOIN hostels h ON r.hostel_id = h.hostel_id '
@@ -689,14 +811,14 @@ def manager_invoices():
         'SELECT i.*, s.name AS student_name FROM invoices i '
         'JOIN students s ON i.student_id = s.student_id ORDER BY i.invoice_id DESC'
     )
-    students = query('SELECT student_id, name FROM students ORDER BY student_id')
+    students = query('SELECT student_id, student_no, name FROM students ORDER BY student_id')
     student_summary = query(
-        'SELECT s.student_id, s.name AS student_name, '
+        'SELECT s.student_id, s.student_no, s.name AS student_name, '
         'MIN(i.invoice_id) AS first_invoice_id, '
         'COUNT(*) AS count, SUM(i.amount) AS total, '
         'GROUP_CONCAT(i.invoice_type ORDER BY i.invoice_id SEPARATOR ", ") AS types '
         'FROM invoices i JOIN students s ON i.student_id = s.student_id '
-        'GROUP BY s.student_id, s.name ORDER BY first_invoice_id'
+        'GROUP BY s.student_id, s.student_no, s.name ORDER BY first_invoice_id'
     )
     summary = query(
         'SELECT invoice_type, COUNT(*) AS count, SUM(amount) AS total '
@@ -761,29 +883,160 @@ def manager_attendance():
                 'ON DUPLICATE KEY UPDATE status = %s',
                 (student_id, att_date, status, status),
             )
+            notify_student(
+                student_id, 'Attendance',
+                f'Your attendance was marked as {status} for {att_date}.',
+                '/student/attendance',
+            )
         else:
-            staff_id = request.form.get('staff_id')
+            staff_id = request.form.get('student_id')
             execute(
                 'INSERT INTO staff_attendance (staff_id, date, status) VALUES (%s, %s, %s) '
                 'ON DUPLICATE KEY UPDATE status = %s',
                 (staff_id, att_date, status, status),
             )
+            notify_staff(
+                staff_id, 'Attendance',
+                f'Your attendance was marked as {status} for {att_date}.',
+                '/staff/attendance',
+            )
         flash('Attendance recorded.', 'success')
         return redirect(url_for('manager_attendance'))
-    students = query('SELECT student_id, name FROM students ORDER BY student_id')
-    staff_members = query('SELECT staff_id, name FROM staff ORDER BY staff_id')
+    students = query('SELECT student_id, student_no, name FROM students ORDER BY student_id')
+    staff_members = query('SELECT staff_id, staff_no, name FROM staff ORDER BY staff_id')
     student_attendance = query(
-        'SELECT a.*, s.name FROM student_attendance a JOIN students s ON a.student_id = s.student_id '
+        'SELECT a.*, s.student_no, s.name FROM student_attendance a JOIN students s ON a.student_id = s.student_id '
         'ORDER BY a.date DESC, a.attendance_id DESC LIMIT 15'
     )
     staff_attendance = query(
-        'SELECT a.*, st.name FROM staff_attendance a JOIN staff st ON a.staff_id = st.staff_id '
+        'SELECT a.*, st.staff_no, st.name FROM staff_attendance a JOIN staff st ON a.staff_id = st.staff_id '
         'ORDER BY a.date DESC, a.attendance_id DESC LIMIT 15'
     )
+
+    person_type = request.args.get('person_type')
+    from_date = request.args.get('from_date', '')
+    to_date = request.args.get('to_date', '')
+    person = None
+    person_records = []
+    person_stats = None
+    person_donut = None
+    person_trend = None
+
+    person_id = request.args.get('person_id')
+    try:
+        person_id = int(person_id) if person_id else None
+    except (TypeError, ValueError):
+        person_id = None
+
+    if person_type in ('student', 'staff') and person_id:
+        where = []
+        params = []
+        if from_date:
+            where.append('date >= %s')
+            params.append(from_date)
+        if to_date:
+            where.append('date <= %s')
+            params.append(to_date)
+        if person_type == 'student':
+            where.append('student_id = %s')
+            params.append(person_id)
+        else:
+            where.append('staff_id = %s')
+            params.append(person_id)
+        where_sql = (' WHERE ' + ' AND '.join(where)) if where else ''
+        if person_type == 'student':
+            person = query(
+                'SELECT student_id, student_no, name FROM students WHERE student_id = %s',
+                (person_id,), one=True,
+            )
+            person_records = query(
+                'SELECT * FROM student_attendance' + where_sql + ' ORDER BY date DESC, attendance_id DESC',
+                tuple(params),
+            )
+        else:
+            person = query(
+                'SELECT staff_id, staff_no, name FROM staff WHERE staff_id = %s',
+                (person_id,), one=True,
+            )
+            person_records = query(
+                'SELECT * FROM staff_attendance' + where_sql + ' ORDER BY date DESC, attendance_id DESC',
+                tuple(params),
+            )
+        counts, total, rate = _attendance_stats(person_records)
+        person_stats = {
+            'present': counts['Present'], 'absent': counts['Absent'],
+            'leave': counts['Leave'], 'rate': rate,
+        }
+        person_donut = _donut_payload(
+            ['Present', 'Absent', 'Leave'],
+            [counts['Present'], counts['Absent'], counts['Leave']],
+        )
+        try:
+            end = date.fromisoformat(to_date) if to_date else date.today()
+            if from_date and to_date:
+                days = (end - date.fromisoformat(from_date)).days + 1
+                days = max(days, 1)
+            else:
+                days = 30
+            person_trend = _attendance_trend(person_records, days=days, end=end)
+        except ValueError:
+            person_trend = _attendance_trend(person_records, days=30, end=date.today())
+
     return render_template(
         'manager/attendance.html', students=students, staff_members=staff_members,
         student_attendance=student_attendance, staff_attendance=staff_attendance,
+        person_type=person_type, person=person, person_records=person_records,
+        person_stats=person_stats, person_donut=person_donut, person_trend=person_trend,
+        from_date=from_date, to_date=to_date,
     )
+
+
+@app.route('/manager/attendance/update', methods=['POST'])
+@login_required
+@role_required('manager')
+def manager_attendance_update():
+    person_type = request.form.get('person_type')
+    person_id = request.form.get('person_id')
+    att_date = request.form.get('att_date')
+    status = request.form.get('status')
+    from_date = request.form.get('from_date', '')
+    to_date = request.form.get('to_date', '')
+    try:
+        person_id = int(person_id) if person_id else None
+    except (TypeError, ValueError):
+        person_id = None
+    if person_type not in ('student', 'staff') or not person_id or not att_date:
+        flash('Invalid attendance update request.', 'danger')
+    elif status not in ATT_STATUS:
+        flash('Invalid status.', 'danger')
+    else:
+        if person_type == 'student':
+            execute(
+                'INSERT INTO student_attendance (student_id, date, status) VALUES (%s, %s, %s) '
+                'ON DUPLICATE KEY UPDATE status = %s',
+                (person_id, att_date, status, status),
+            )
+            notify_student(
+                person_id, 'Attendance',
+                f'Your attendance for {att_date} was updated to {status}.',
+                '/student/attendance',
+            )
+        else:
+            execute(
+                'INSERT INTO staff_attendance (staff_id, date, status) VALUES (%s, %s, %s) '
+                'ON DUPLICATE KEY UPDATE status = %s',
+                (person_id, att_date, status, status),
+            )
+            notify_staff(
+                person_id, 'Attendance',
+                f'Your attendance for {att_date} was updated to {status}.',
+                '/staff/attendance',
+            )
+        flash('Attendance updated.', 'success')
+    return redirect(url_for(
+        'manager_attendance', person_type=person_type, person_id=person_id,
+        from_date=from_date or None, to_date=to_date or None,
+    ))
 
 
 @app.route('/manager/mess-menu', methods=['GET', 'POST'])
@@ -869,13 +1122,13 @@ def manager_violations():
             flash('Violation recorded.', 'success')
         return redirect(url_for('manager_violations'))
     violations = query(
-        'SELECT v.*, s.name AS student_name, st.name AS staff_name FROM violations v '
+        'SELECT v.*, s.student_no, s.name AS student_name, st.staff_no, st.name AS staff_name FROM violations v '
         'LEFT JOIN students s ON v.student_id = s.student_id '
         'LEFT JOIN staff st ON v.staff_id = st.staff_id '
         'ORDER BY v.date DESC, v.violation_id DESC'
     )
-    students = query('SELECT student_id, name FROM students ORDER BY student_id')
-    staff_members = query('SELECT staff_id, name FROM staff ORDER BY staff_id')
+    students = query('SELECT student_id, student_no, name FROM students ORDER BY student_id')
+    staff_members = query('SELECT staff_id, staff_no, name FROM staff ORDER BY staff_id')
     return render_template('manager/violations.html', violations=violations, students=students, staff_members=staff_members)
 
 
@@ -929,7 +1182,7 @@ def resolve_violation(violation_id):
 @role_required('manager')
 def manager_feedback():
     feedbacks = query(
-        'SELECT f.*, s.name AS student_name FROM feedback f '
+        'SELECT f.*, s.student_no, s.name AS student_name FROM feedback f '
         'JOIN students s ON f.student_id = s.student_id '
         'ORDER BY f.date DESC, f.feedback_id DESC'
     )
@@ -957,7 +1210,7 @@ def manager_mess_off():
         flash(f'Mess off request {status.lower()}.', 'success')
         return redirect(url_for('manager_mess_off'))
     requests = query(
-        'SELECT r.*, s.name AS student_name FROM mess_off_requests r '
+        'SELECT r.*, s.student_no, s.name AS student_name FROM mess_off_requests r '
         'JOIN students s ON r.student_id = s.student_id '
         'ORDER BY r.start_date DESC, r.mess_off_id DESC'
     )
@@ -969,7 +1222,7 @@ def manager_mess_off():
 @role_required('manager')
 def manager_parcels():
     parcels = query(
-        'SELECT p.*, s.student_id, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
+        'SELECT p.*, s.student_no, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
         'FROM parcels p JOIN students s ON p.student_id = s.student_id '
         'LEFT JOIN staff r ON p.received_by_staff = r.staff_id '
         'LEFT JOIN students c ON p.collected_by_student = c.student_id '
@@ -983,7 +1236,7 @@ def manager_parcels():
 @role_required('manager')
 def manager_visitors():
     visitors = query(
-        'SELECT v.*, s.name AS student_name, st.name AS registered_by '
+        'SELECT v.*, s.student_no, s.name AS student_name, st.staff_no, st.name AS registered_by '
         'FROM visitors v JOIN students s ON v.student_id = s.student_id '
         'LEFT JOIN staff st ON v.registered_by_staff = st.staff_id '
         'ORDER BY v.visit_date DESC, v.visitor_id DESC'
@@ -1010,9 +1263,15 @@ def manager_staff():
                 'INSERT INTO users (username, password, role) VALUES (%s, %s, %s)',
                 (username, generate_password_hash(password), 'staff'),
             )
+            next_no = query(
+                "SELECT AUTO_INCREMENT AS n FROM information_schema.TABLES "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'staff'",
+                one=True,
+            )['n']
             execute(
-                'INSERT INTO staff (user_id, name, designation, salary) VALUES (%s, %s, %s, %s)',
-                (user_id, name, designation, salary),
+                'INSERT INTO staff (staff_no, user_id, name, designation, salary) '
+                'VALUES (%s, %s, %s, %s, %s)',
+                (f'STF-{next_no:04d}', user_id, name, designation, salary),
             )
             flash(f'Staff "{name}" added.', 'success')
             return redirect(url_for('manager_staff'))
@@ -1261,10 +1520,21 @@ def student_in_out():
         out_date = request.form.get('out_date')
         reason = request.form.get('reason', '').strip()
         if out_date:
+            student = query(
+                'SELECT name, student_no FROM students WHERE student_id = %s',
+                (session['role_id'],), one=True,
+            )
             execute(
                 'INSERT INTO student_in_out (student_id, out_date, reason, status) VALUES (%s, %s, %s, %s)',
                 (session['role_id'], out_date, reason, 'Out'),
             )
+            who = f'{student["name"]} ({student["student_no"]})' if student else f'Student #{session["role_id"]}'
+            notify_all_staff(
+                'Student out',
+                f'{who} has left the hostel. Please mark them returned when they come back.',
+                '/staff/in-out',
+            )
+            notify_managers('Student out', f'{who} has left the hostel.')
             flash('Leave request recorded.', 'success')
         return redirect(url_for('student_in_out'))
     records = query(
@@ -1394,8 +1664,19 @@ def student_attendance():
         'SELECT * FROM student_attendance WHERE student_id = %s AND date = %s',
         (session['role_id'], today_str), one=True,
     )
+    counts, total, rate = _attendance_stats(records)
+    my_stats = {
+        'present': counts['Present'], 'absent': counts['Absent'],
+        'leave': counts['Leave'], 'rate': rate,
+    }
+    my_donut = _donut_payload(
+        ['Present', 'Absent', 'Leave'],
+        [counts['Present'], counts['Absent'], counts['Leave']],
+    )
+    my_trend = _attendance_trend(records, days=30, end=date.today())
     return render_template(
         'student/attendance.html', records=records, student=student, today_record=today_record,
+        my_stats=my_stats, my_donut=my_donut, my_trend=my_trend,
     )
 
 
@@ -1449,7 +1730,7 @@ def staff_visitors():
             )
             flash('Visitor registered.', 'success')
         return redirect(url_for('staff_visitors'))
-    students = query('SELECT student_id, name FROM students ORDER BY student_id')
+    students = query('SELECT student_id, student_no, name FROM students ORDER BY student_id')
     visitors = query(
         'SELECT v.*, s.name AS student_name FROM visitors v '
         'JOIN students s ON v.student_id = s.student_id ORDER BY v.visit_date DESC, v.visitor_id DESC'
@@ -1477,9 +1758,9 @@ def staff_parcels():
             )
             flash('Parcel received and registered.', 'success')
         return redirect(url_for('staff_parcels'))
-    students = query('SELECT student_id, name FROM students ORDER BY student_id')
+    students = query('SELECT student_id, student_no, name FROM students ORDER BY student_id')
     parcels = query(
-        'SELECT p.*, s.student_id, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
+        'SELECT p.*, s.student_no, s.name AS student_name, r.name AS received_by, c.name AS collected_by '
         'FROM parcels p JOIN students s ON p.student_id = s.student_id '
         'LEFT JOIN staff r ON p.received_by_staff = r.staff_id '
         'LEFT JOIN students c ON p.collected_by_student = c.student_id '
@@ -1494,19 +1775,29 @@ def staff_parcels():
 def staff_in_out():
     if request.method == 'POST':
         record_id = request.form.get('record_id')
+        record = query(
+            'SELECT student_id FROM student_in_out WHERE record_id = %s',
+            (record_id,), one=True,
+        )
         execute(
             "UPDATE student_in_out SET in_date = %s, status = %s WHERE record_id = %s AND status = 'Out'",
             (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'Returned', record_id),
         )
+        if record:
+            notify_student(
+                record['student_id'], 'Returned',
+                'You have been marked as returned to the hostel.',
+                '/student/in-out',
+            )
         flash('Student marked as returned.', 'success')
         return redirect(url_for('staff_in_out'))
     out_records = query(
-        'SELECT io.*, s.name AS student_name FROM student_in_out io '
+        'SELECT io.*, s.student_no, s.name AS student_name FROM student_in_out io '
         'JOIN students s ON io.student_id = s.student_id '
         "WHERE io.status = 'Out' ORDER BY io.out_date DESC"
     )
     history = query(
-        'SELECT io.*, s.name AS student_name FROM student_in_out io '
+        'SELECT io.*, s.student_no, s.name AS student_name FROM student_in_out io '
         'JOIN students s ON io.student_id = s.student_id '
         "WHERE io.status = 'Returned' ORDER BY io.in_date DESC, io.record_id DESC LIMIT 20"
     )
@@ -1575,8 +1866,19 @@ def staff_attendance():
         'SELECT * FROM staff_attendance WHERE staff_id = %s AND date = %s',
         (session['role_id'], today_str), one=True,
     )
+    counts, total, rate = _attendance_stats(records)
+    my_stats = {
+        'present': counts['Present'], 'absent': counts['Absent'],
+        'leave': counts['Leave'], 'rate': rate,
+    }
+    my_donut = _donut_payload(
+        ['Present', 'Absent', 'Leave'],
+        [counts['Present'], counts['Absent'], counts['Leave']],
+    )
+    my_trend = _attendance_trend(records, days=30, end=date.today())
     return render_template(
         'staff/attendance.html', records=records, hostels=hostels, today_record=today_record,
+        my_stats=my_stats, my_donut=my_donut, my_trend=my_trend,
     )
 
 

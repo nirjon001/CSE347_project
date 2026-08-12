@@ -22,7 +22,7 @@
                 <label for="student_id">Student</label>
                 <select id="student_id" name="student_id" data-role="gender-filter" required>
                     {% for s in students %}
-                    <option value="{{ s.student_id }}" data-gender="{{ s.gender }}">{{ s.name }} (ID: {{ s.student_id }}, {{ s.gender }})</option>
+                    <option value="{{ s.student_id }}" data-gender="{{ s.gender }}">{{ s.name }} ({{ s.student_no }}, {{ s.gender }})</option>
                     {% endfor %}
                 </select>
             </div>

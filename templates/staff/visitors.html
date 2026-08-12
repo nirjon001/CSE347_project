@@ -14,7 +14,7 @@
             <label for="student_id">Visiting student</label>
             <select id="student_id" name="student_id" required>
                 {% for s in students %}
-                <option value="{{ s.student_id }}">{{ s.name }} (ID: {{ s.student_id }})</option>
+                <option value="{{ s.student_id }}">{{ s.name }} ({{ s.student_no }})</option>
                 {% endfor %}
             </select>
         </div>
