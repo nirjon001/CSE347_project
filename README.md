@@ -17,20 +17,20 @@
 
 - **Role-based login** — separate dashboards for Manager, Student, and Staff (Flask sessions + hashed passwords)
 - **Gender-separated hostels** — each hostel is Male or Female; room allocation (and the database) refuses to place a student in an opposite-gender hostel
-- **Notification system** — a bell with an unread-count badge and a full notification page; students/staff get automatic alerts (complaint updates, new invoices, parcel arrivals, visitor arrivals, violation notices, mess-off decisions) and managers can send free-text notices
+- **Notification system** — a bell with an unread-count badge and a full notification page with **filter chips** (All / Unread / by category: Complaints, Mess Off, Parcels, Visitors, Attendance, Invoices, Violations, Notices, ...) so a busy admin inbox stays manageable; students/staff get automatic alerts (complaint updates, new invoices, parcel arrivals, visitor arrivals, violation notices, mess-off decisions) and managers can send free-text notices
 - **Geo-fenced attendance** — students and staff mark "Present" only from inside their hostel's GPS radius (browser location + Leaflet/OpenStreetMap, no paid API keys). Managers set the hostel's location by dropping a pin on a map or typing coordinates, and the map shows your live position with an accuracy estimate (how close ± the fix is) and an inside/outside check
 - **Student parcel self-collection** — staff receive parcels (auto-notifying the student); students pick them up with one click, and every parcel keeps an audit trail (who received it, who collected it, when)
-- **Manager — rooms & people**: register/delete students, allocate rooms, add/edit/delete hostels (map pin or typed coordinates; duplicate addresses are rejected) & add rooms with custom bed capacity, view each room's occupants, manage & delete staff
-- **Manager — day-to-day**: manage complaints & invoices (**generate several bills at once** — room rent / electricity / food / water / other — with a summary-by-type section, a per-student **expandable bill list** with totals, a **Print statement** per student and per-invoice **Print** copies), record attendance, update the mess menu, record & resolve violations (tabbed page: record / send notice / browse all with Open-Resolved filters and per-row notify), view student feedback, approve/reject mess-off requests, view all parcels, view visitor logs
-- **Student**: view profile & room, submit complaints, view invoices (total / paid / unpaid summary with View-Print for a physical copy), apply mess-off, give feedback, record in/out, check & collect parcels (who received them, when collected), mark attendance
-- **Staff**: register visitors at the front desk, receive parcels (notifies the student), record student returns, record own (geo-fenced) attendance
+- **Manager — rooms & people**: register/delete students, allocate rooms, add/edit/delete hostels (map pin or typed coordinates; duplicate addresses are rejected) & add rooms with custom bed capacity, view each room's occupants (each room row **expands** to list its students — name, student no, email, phone — like the invoice list), Hostels/Rooms come as two **pill-tab views**, manage & delete staff
+- **Manager — day-to-day**: manage complaints & invoices (**generate several bills at once** — room rent / electricity / food / water / other — with a summary-by-type section, a per-student **expandable bill list** with totals, a **Print statement** per student and per-invoice **Print** copies), record attendance with a **dashboard analytics section** (today's status donut + last-14-day trend) and a **per-person View/Edit** table (select a student or staff member to browse their history and change any day's status inline, with their own donut + trend charts), update the mess menu, record & resolve violations (tabbed page: record / send notice / browse all with Open-Resolved filters and per-row notify), view student feedback, approve/reject mess-off requests, view all parcels, view visitor logs
+- **Student**: view profile & room, submit complaints, view invoices (total / paid / unpaid summary with View-Print for a physical copy), apply mess-off, give feedback, record in/out, check & collect parcels (who received them, when collected), mark **(geo-fenced) attendance with personal stats + donut/trend charts**
+- **Staff**: register visitors at the front desk, receive parcels (notifies the student), record student returns, record own (geo-fenced) attendance **with personal stats + charts**
 - **Security**: scrypt password hashing, parameterized SQL (SQL-injection safe), role-guarded routes, strict SQL mode so invalid data is rejected
 
 ## 🛠️ Tech Stack
 
 - **Backend**: Python 3 + Flask (server-rendered Jinja2 templates)
 - **Database**: MySQL / MariaDB (schema in `hostel_management_schema.sql`)
-- **Frontend**: HTML + CSS (single small JS file)
+- **Frontend**: HTML + CSS (single small JS file) + Chart.js (via CDN) for attendance/trend charts
 
 ## 🚀 Getting Started
 
@@ -118,11 +118,12 @@ You should see `Running on http://127.0.0.1:5000`. Open that URL in a browser an
 | `staff1`   | `staff123` | Staff — Caretaker (Karim Mia) |
 | `staff2`   | `staff123` | Staff — Cook (Rashida Begum) |
 | `staff3`   | `staff123` | Staff — Guard (Hanif Uddin) |
-| `student1` | `student123` | Student — Rafi (room 101) |
-| `student2` | `student123` | Student — Sadia (no room) |
-| `student3` | `student123` | Student — Tanvir (room 201) |
-| `student4` | `student123` | Student — Nusrat (room 301) |
-| `student5` | `student123` | Student — Mehedi (no room) |
+| `student1` | `student123` | Student — Jakir Hossain (room 101) |
+| `student2` | `student123` | Student — Moin Uddin (room 101) |
+| `student3` | `student123` | Student — Abdullah Al Mamun (room 101) |
+| `student4` | `student123` | Student — Iftekhar Alam (room 101) |
+| `student5` | `student123` | Student — Rakib Uddin (room 102) |
+| `student6` … `student50` | `student123` | 50 students total, 2.5 months of daily attendance records & rich demo data |
 
 ## 🌐 Live Website
 
@@ -154,7 +155,8 @@ CSE347_project/
 ├── requirements.txt, render.yaml  # Python deps, Render Blueprint (gunicorn app:app)
 ├── hostel_management_schema.sql   # Fresh schema (18 tables + 3 triggers)
 ├── migrations.sql                 # Idempotent upgrade for older databases
-├── seed_data.sql                  # Demo accounts & records
+├── seed_data.sql                  # Demo accounts & records (50 students, 2.5 months of data)
+├── scripts/generate_seed.py       # Regenerates seed_data.sql (names/rooms/attendance/records)
 ├── templates/                     # Jinja2 pages (auth/, manager/, student/, staff/ + base)
 ├── static/                        # css/style.css, js/main.js
 ├── scripts/                       # Web-deploy helpers (init_web_db.bat, sync_web_db.bat)
