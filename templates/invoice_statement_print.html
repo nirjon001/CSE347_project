@@ -63,8 +63,8 @@
         <div>
             <h3>Statement Summary</h3>
             <p>Total invoices: {{ totals.count }}</p>
-            <p>Total value: ${{ '%.2f'|format(totals.total) }}</p>
-            <p>Paid: ${{ '%.2f'|format(totals.paid) }} / Unpaid: ${{ '%.2f'|format(totals.unpaid) }}</p>
+            <p>Total value: {{ '%.2f'|format(totals.total) }}TK</p>
+            <p>Paid: {{ '%.2f'|format(totals.paid) }}TK / Unpaid: {{ '%.2f'|format(totals.unpaid) }}TK</p>
         </div>
     </div>
 
@@ -79,21 +79,21 @@
                 <td>{{ i.invoice_type }}</td>
                 <td>{{ i.due_date }}</td>
                 <td><span class="status s-{{ i.payment_status|lower }}">{{ i.payment_status }}</span></td>
-                <td class="num">${{ '%.2f'|format(i.amount) }}</td>
+                <td class="num">{{ '%.2f'|format(i.amount) }}TK</td>
             </tr>
             {% endfor %}
             <tr class="total-row">
                 <td colspan="4">Total</td>
-                <td class="num">${{ '%.2f'|format(totals.total) }}</td>
+                <td class="num">{{ '%.2f'|format(totals.total) }}TK</td>
             </tr>
         </tbody>
     </table>
 
     <div class="summary-grid">
         <div class="summary-card"><span class="summary-label">Total Invoices</span><span class="summary-value">{{ totals.count }}</span></div>
-        <div class="summary-card"><span class="summary-label">Total Value</span><span class="summary-value">${{ '%.2f'|format(totals.total) }}</span></div>
-        <div class="summary-card"><span class="summary-label">Paid</span><span class="summary-value">${{ '%.2f'|format(totals.paid) }}</span></div>
-        <div class="summary-card"><span class="summary-label">Unpaid / Overdue</span><span class="summary-value">${{ '%.2f'|format(totals.unpaid) }}</span></div>
+        <div class="summary-card"><span class="summary-label">Total Value</span><span class="summary-value">{{ '%.2f'|format(totals.total) }}TK</span></div>
+        <div class="summary-card"><span class="summary-label">Paid</span><span class="summary-value">{{ '%.2f'|format(totals.paid) }}TK</span></div>
+        <div class="summary-card"><span class="summary-label">Unpaid / Overdue</span><span class="summary-value">{{ '%.2f'|format(totals.unpaid) }}TK</span></div>
     </div>
 
     <div class="footer">Please pay before the due date. Thank you.</div>

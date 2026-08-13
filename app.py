@@ -3,7 +3,7 @@ from functools import wraps
 from math import asin, cos, radians, sin, sqrt
 
 from flask import (
-    Flask, flash, redirect, render_template, request, session, url_for,
+    Flask, flash, jsonify, redirect, render_template, request, session, url_for,
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -46,10 +46,14 @@ def inject_session_user():
             (session['user_id'],), one=True,
         )
         unread = row['c'] if row else 0
+    popup_unread = 0
+    if session.pop('show_unread_popup', False) and unread > 0:
+        popup_unread = unread
     return {
         'session_role': session.get('role'),
         'session_username': session.get('username'),
         'unread_count': unread,
+        'popup_unread': popup_unread,
     }
 
 
@@ -73,6 +77,10 @@ def role_required(role):
             return f(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def _is_ajax():
+    return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
 
 def get_role_id(role, user_id):
@@ -186,6 +194,7 @@ def login():
             session['username'] = user['username']
             session['role'] = user['role']
             session['role_id'] = get_role_id(user['role'], user['user_id'])
+            session['show_unread_popup'] = True
             flash(f'Welcome back, {user["username"]}!', 'success')
             return redirect(url_for('dashboard'))
         flash('Invalid username or password.', 'danger')
@@ -293,6 +302,8 @@ def notification_read(notification_id):
 @login_required
 def notifications_read_all():
     execute('UPDATE notifications SET is_read = 1 WHERE user_id = %s', (session['user_id'],))
+    if _is_ajax():
+        return jsonify(ok=True, message='All notifications marked as read.')
     flash('All notifications marked as read.', 'success')
     return redirect(url_for('notifications'))
 
@@ -702,12 +713,14 @@ def manager_complaints():
                 f'Your complaint status is now "{status}".',
                 '/student/complaints',
             )
+        if _is_ajax():
+            return jsonify(ok=True, message='Complaint status updated.', status=status)
         flash('Complaint status updated.', 'success')
         return redirect(url_for('manager_complaints'))
     complaints = query(
         'SELECT c.*, s.student_no, s.name AS student_name, r.room_no, h.hostel_name '
         'FROM complaints c JOIN students s ON c.student_id = s.student_id '
-        'LEFT JOIN rooms r ON c.room_id = r.room_id '
+        'LEFT JOIN rooms r ON COALESCE(c.room_id, s.room_id) = r.room_id '
         'LEFT JOIN hostels h ON r.hostel_id = h.hostel_id '
         'ORDER BY c.date DESC, c.complaint_id DESC'
     )
@@ -839,6 +852,8 @@ def toggle_invoice(invoice_id):
     invoice = query('SELECT payment_status FROM invoices WHERE invoice_id = %s', (invoice_id,), one=True)
     new_status = 'Paid' if invoice['payment_status'] != 'Paid' else 'Unpaid'
     execute('UPDATE invoices SET payment_status = %s WHERE invoice_id = %s', (new_status, invoice_id))
+    if _is_ajax():
+        return jsonify(ok=True, message=f'Invoice marked {new_status}.', status=new_status)
     flash(f'Invoice marked {new_status}.', 'success')
     return redirect(url_for('manager_invoices'))
 
@@ -1006,8 +1021,12 @@ def manager_attendance_update():
     except (TypeError, ValueError):
         person_id = None
     if person_type not in ('student', 'staff') or not person_id or not att_date:
+        if _is_ajax():
+            return jsonify(ok=False, message='Invalid attendance update request.')
         flash('Invalid attendance update request.', 'danger')
     elif status not in ATT_STATUS:
+        if _is_ajax():
+            return jsonify(ok=False, message='Invalid status.')
         flash('Invalid status.', 'danger')
     else:
         if person_type == 'student':
@@ -1032,6 +1051,8 @@ def manager_attendance_update():
                 f'Your attendance for {att_date} was updated to {status}.',
                 '/staff/attendance',
             )
+        if _is_ajax():
+            return jsonify(ok=True, message='Attendance updated.', status=status)
         flash('Attendance updated.', 'success')
     return redirect(url_for(
         'manager_attendance', person_type=person_type, person_id=person_id,
@@ -1173,6 +1194,8 @@ def resolve_violation(violation_id):
                 violation['staff_id'], 'Violation',
                 'Your violation was marked as resolved.',
             )
+    if _is_ajax():
+        return jsonify(ok=True, message='Violation marked as resolved.', status='Resolved')
     flash('Violation marked as resolved.', 'success')
     return redirect(url_for('manager_violations'))
 
@@ -1207,6 +1230,8 @@ def manager_mess_off():
                 f'Your mess-off request was {status.lower()}.',
                 '/student/mess-off',
             )
+        if _is_ajax():
+            return jsonify(ok=True, message=f'Mess off request {status.lower()}.', status=status)
         flash(f'Mess off request {status.lower()}.', 'success')
         return redirect(url_for('manager_mess_off'))
     requests = query(
@@ -1415,7 +1440,8 @@ def student_complaints():
     complaints = query(
         'SELECT c.*, r.room_no, h.hostel_name '
         'FROM complaints c '
-        'LEFT JOIN rooms r ON c.room_id = r.room_id '
+        'JOIN students s ON c.student_id = s.student_id '
+        'LEFT JOIN rooms r ON COALESCE(c.room_id, s.room_id) = r.room_id '
         'LEFT JOIN hostels h ON r.hostel_id = h.hostel_id '
         'WHERE c.student_id = %s ORDER BY c.date DESC, c.complaint_id DESC',
         (session['role_id'],),
@@ -1580,6 +1606,8 @@ def student_parcels():
                     f"{student['name']} collected their parcel.",
                     '/manager/parcels',
                 )
+                if _is_ajax():
+                    return jsonify(ok=True, message='Parcel collected. Enjoy!', status='Collected')
                 flash('Parcel collected. Enjoy!', 'success')
         return redirect(url_for('student_parcels'))
     parcels = query(
@@ -1789,6 +1817,8 @@ def staff_in_out():
                 'You have been marked as returned to the hostel.',
                 '/student/in-out',
             )
+        if _is_ajax():
+            return jsonify(ok=True, message='Student marked as returned.', status='Returned')
         flash('Student marked as returned.', 'success')
         return redirect(url_for('staff_in_out'))
     out_records = query(

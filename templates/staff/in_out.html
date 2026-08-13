@@ -21,7 +21,7 @@
                 <td>{{ r.out_date }}</td>
                 <td>{{ r.reason or '-' }}</td>
                 <td>
-                    <form method="post">
+                    <form method="post" data-ajax="return">
                         <input type="hidden" name="record_id" value="{{ r.record_id }}">
                         <button type="submit" class="btn btn-success btn-sm">Mark Returned</button>
                     </form>

@@ -629,8 +629,46 @@ body.auth-page .container {
 
 .notif-time { display: block; color: var(--muted); font-size: 12px; margin-top: 8px; }
 
+/* ---------- Unread notifications popup ---------- */
+.unread-popup-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.unread-popup {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.35);
+    padding: 28px 26px 22px;
+    max-width: 380px;
+    width: 100%;
+    position: relative;
+    text-align: center;
+}
+.unread-popup-close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    background: none;
+    border: none;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 6px;
+}
+.unread-popup-close:hover { color: var(--text); }
+.unread-popup h2 { font-size: 20px; margin: 0 0 8px; color: var(--text); }
+.unread-popup p { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
+.unread-popup-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
 /* ---------- Geo-fence attendance map ---------- */
-.map-canvas { height: 240px; border-radius: var(--radius); border: 1px solid var(--border); }
+.map-canvas { height: 300px; border-radius: var(--radius); border: 1px solid var(--border); }
 
 /* ---------- Checkbox labels ---------- */
 .check-label {

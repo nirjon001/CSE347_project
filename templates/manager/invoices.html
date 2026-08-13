@@ -15,13 +15,13 @@
         {% for s in summary %}
         <div class="summary-card">
             <span class="summary-label">{{ s.invoice_type }}</span>
-            <span class="summary-value">${{ '%.2f'|format(s.total) }}</span>
+            <span class="summary-value">{{ '%.2f'|format(s.total) }}TK</span>
             <span class="summary-sub">{{ s.count }} invoice{{ 's' if s.count != 1 else '' }}</span>
         </div>
         {% endfor %}
         <div class="summary-card summary-total">
             <span class="summary-label">Grand Total</span>
-            <span class="summary-value">${{ '%.2f'|format(grand.total) }}</span>
+            <span class="summary-value">{{ '%.2f'|format(grand.total) }}TK</span>
             <span class="summary-sub">{{ grand.count }} invoice{{ 's' if grand.count != 1 else '' }}</span>
         </div>
     </div>
@@ -78,7 +78,7 @@
                 <td>{{ g.student_no }}</td>
                 <td>{{ g.types }}</td>
                 <td>{{ g.count }}</td>
-                <td>${{ '%.2f'|format(g.total) }}</td>
+                <td>{{ '%.2f'|format(g.total) }}TK</td>
                 <td class="actions-cell">
                     <a class="btn btn-primary btn-sm" href="{{ url_for('manager_invoice_statement_print', student_id=g.student_id) }}" target="_blank">Print statement</a>
                 </td>
@@ -94,7 +94,7 @@
                             <tr>
                                 <td>{{ i.invoice_id }}</td>
                                 <td>{{ i.invoice_type }}</td>
-                                <td>${{ i.amount }}</td>
+                                <td>{{ i.amount }} TK</td>
                                 <td>{{ i.due_date }}</td>
                                 <td>
                                     {% if i.payment_status == 'Paid' %}<span class="badge badge-green">Paid</span>
@@ -102,7 +102,7 @@
                                     {% else %}<span class="badge badge-red">Overdue</span>{% endif %}
                                 </td>
                                 <td class="actions-cell">
-                                    <form method="post" action="{{ url_for('toggle_invoice', invoice_id=i.invoice_id) }}">
+                                    <form method="post" action="{{ url_for('toggle_invoice', invoice_id=i.invoice_id) }}" data-ajax="invoice">
                                         <button type="submit" class="btn btn-ghost btn-sm">
                                             Mark {{ 'Unpaid' if i.payment_status == 'Paid' else 'Paid' }}
                                         </button>

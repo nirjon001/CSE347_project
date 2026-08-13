@@ -27,7 +27,7 @@
                 {% else %}<span class="badge badge-green">Resolved</span>{% endif %}
             </td>
             <td>
-                <form method="post" class="form-row" style="gap:6px">
+                <form method="post" class="form-row" style="gap:6px" data-ajax="complaint">
                     <input type="hidden" name="complaint_id" value="{{ c.complaint_id }}">
                     <select name="status" style="padding:5px;font-size:13px">
                         <option value="Pending" {{ 'selected' if c.status == 'Pending' }}>Pending</option>

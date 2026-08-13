@@ -26,7 +26,7 @@
             </td>
             <td>
                 {% if r.status == 'Pending' %}
-                <form method="post" class="form-row" style="gap:6px">
+                <form method="post" class="form-row" style="gap:6px" data-ajax="messoff">
                     <input type="hidden" name="request_id" value="{{ r.mess_off_id }}">
                     <button type="submit" name="status" value="Approved" class="btn btn-success btn-sm">Approve</button>
                     <button type="submit" name="status" value="Rejected" class="btn btn-danger btn-sm">Reject</button>

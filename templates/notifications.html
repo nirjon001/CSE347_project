@@ -7,7 +7,7 @@
         <p>Updates on complaints, parcels, invoices, mess-off requests and more.</p>
     </div>
     {% if notifications %}
-    <form method="post" action="{{ url_for('notifications_read_all') }}">
+    <form method="post" action="{{ url_for('notifications_read_all') }}" data-ajax="readall">
         <button type="submit" class="btn btn-secondary">Mark all as read</button>
     </form>
     {% endif %}

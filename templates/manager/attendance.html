@@ -126,7 +126,7 @@
                     {% else %}<span class="badge badge-blue">Leave</span>{% endif %}
                 </td>
                 <td>
-                    <form method="post" action="{{ url_for('manager_attendance_update') }}" class="form-row" style="gap:6px">
+                    <form method="post" action="{{ url_for('manager_attendance_update') }}" class="form-row" style="gap:6px" data-ajax="attendance">
                         <input type="hidden" name="person_type" value="{{ person_type }}">
                         <input type="hidden" name="person_id" value="{{ person.student_id if person_type == 'student' else person.staff_id }}">
                         <input type="hidden" name="att_date" value="{{ r.date }}">

@@ -142,6 +142,20 @@
 
 <div class="footer">&copy; 2026 Hostel Management System (HMS). All rights reserved.</div>
 
+{% if popup_unread > 0 %}
+<div class="unread-popup-overlay" id="unread-popup" role="dialog" aria-modal="true" aria-labelledby="unread-popup-title">
+    <div class="unread-popup">
+        <button type="button" class="unread-popup-close" id="unread-popup-close" aria-label="Close">&times;</button>
+        <h2 id="unread-popup-title">You have {{ popup_unread }} unread notification{{ 's' if popup_unread != 1 }}</h2>
+        <p>Check your notifications to catch up on recent updates.</p>
+        <div class="unread-popup-actions">
+            <a class="btn btn-primary" href="{{ url_for('notifications') }}">View Notifications</a>
+            <button type="button" class="btn btn-ghost" id="unread-popup-later">Later</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>

@@ -24,7 +24,7 @@
             <td>{{ p.collected_at or '-' }}</td>
             <td>
                 {% if p.status == 'Arrived' %}
-                <form method="post">
+                <form method="post" data-ajax="collect">
                     <input type="hidden" name="action" value="collect">
                     <input type="hidden" name="parcel_id" value="{{ p.parcel_id }}">
                     <button type="submit" class="btn btn-success btn-sm">Collect</button>

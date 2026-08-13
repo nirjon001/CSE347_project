@@ -119,7 +119,7 @@
                             </form>
                         </div>
                         {% if v.status == 'Open' %}
-                        <form method="post" action="{{ url_for('resolve_violation', violation_id=v.violation_id) }}">
+                        <form method="post" action="{{ url_for('resolve_violation', violation_id=v.violation_id) }}" data-ajax="resolve">
                             <button type="submit" class="btn btn-success btn-sm">Resolve</button>
                         </form>
                         {% else %}<span class="muted">{{ v.resolved_at or '-' }}</span>{% endif %}
