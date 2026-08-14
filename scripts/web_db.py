@@ -348,7 +348,7 @@ def dump_local(cfg):
         "-h", cfg.get("LOCAL_DB_HOST", "127.0.0.1"),
         "-P", cfg.get("LOCAL_DB_PORT", "3306"),
         "-u", cfg.get("LOCAL_DB_USER", "root"),
-        f"-p{cfg.get('LOCAL_DB_PASSWORD', '')}",
+        f"--password={cfg.get('LOCAL_DB_PASSWORD', '')}",
         "--single-transaction", "--skip-lock-tables", "--default-character-set=utf8mb4",
         cfg.get("LOCAL_DB_NAME", "hostel_management"),
     ]
@@ -362,6 +362,9 @@ def import_to_web(cfg, sql_text):
     db = cfg.get("DB_NAME", "hostel_management")
     conn = connect(cfg, database=db)
     conn.autocommit = True
+    cur = conn.cursor()
+    cur.execute("SET FOREIGN_KEY_CHECKS=0")
+    cur.close()
     stmts = split_sql(sql_text)
     try:
         execute_sql(conn, stmts, "web import")
@@ -369,6 +372,9 @@ def import_to_web(cfg, sql_text):
         print(f"FAILED during import: {exc}")
         sys.exit(1)
     finally:
+        cur = conn.cursor()
+        cur.execute("SET FOREIGN_KEY_CHECKS=1")
+        cur.close()
         conn.close()
 
 
@@ -378,8 +384,19 @@ def cmd_push(cfg):
         print("FAILED dumping local DB:")
         print(res.stderr)
         sys.exit(1)
-    import_to_web(cfg, res.stdout)
+    import_to_web(cfg, _strip_definer(res.stdout))
     print(f"SUCCESS: local {cfg.get('LOCAL_DB_NAME', 'hostel_management')} pushed to web {cfg.get('DB_NAME', 'hostel_management')}")
+
+
+def _strip_definer(sql_text):
+    """Remove DEFINER='user'@'host' clauses from CREATE TRIGGER / VIEW /
+    FUNCTION / PROCEDURE statements. Aiven's avnadmin lacks the SUPER /
+    SET_ANY_DEFINER privilege, so the dump's definer must be dropped. Keeps
+    everything else byte-for-byte identical (the triggers still get the current
+    connection's user as their effective definer)."""
+    import re
+
+    return re.sub(r"DEFINER\s*=\s*`[^`]+`@`[^`]+`", "", sql_text, flags=re.IGNORECASE)
 
 
 def mysql_value(v):
@@ -445,7 +462,7 @@ def apply_to_local(cfg, sql_text):
         "-h", cfg.get("LOCAL_DB_HOST", "127.0.0.1"),
         "-P", cfg.get("LOCAL_DB_PORT", "3306"),
         "-u", cfg.get("LOCAL_DB_USER", "root"),
-        f"-p{cfg.get('LOCAL_DB_PASSWORD', '')}",
+        f"--password={cfg.get('LOCAL_DB_PASSWORD', '')}",
         "--default-character-set=utf8mb4",
         cfg.get("LOCAL_DB_NAME", "hostel_management"),
     ]
