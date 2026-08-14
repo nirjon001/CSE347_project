@@ -174,6 +174,82 @@ def distance_m(lat1, lng1, lat2, lng2):
     return radius * 2 * asin(sqrt(a))
 
 
+ABSENT_BACKFILL_DAYS = 30
+_absent_backfill_last_run = None
+
+
+def _attendance_floor(table, id_col, join_sql):
+    """Earliest date each member should be held accountable from (their first
+    attendance record, or their join day if they never marked)."""
+    rows = query(
+        f'SELECT m.{id_col}, '
+        f'COALESCE(MIN(a.date), DATE(u.created_at)) AS floor_date '
+        f'FROM {join_sql} m '
+        f'JOIN users u ON m.user_id = u.user_id '
+        f'LEFT JOIN {table} a ON a.{id_col} = m.{id_col} '
+        f'GROUP BY m.{id_col}, u.created_at'
+    )
+    floors = {}
+    for r in rows:
+        if r['floor_date']:
+            floors[r[id_col]] = r['floor_date']
+    return floors
+
+
+def backfill_absent_days():
+    """Lazily mark Absent for any past day (within the last ABSENT_BACKFILL_DAYS
+    days, but never today) that a student/staff member has no attendance row
+    for. Existing Present/Leave/Absent rows are never overwritten (INSERT
+    IGNORE + the UNIQUE(student/date) key). Runs at most once per day via
+    @app.before_request, so a day that passes unmarked becomes Absent the next
+    time the site is visited."""
+    today = date.today()
+    start = today - timedelta(days=ABSENT_BACKFILL_DAYS)
+    dates = [start + timedelta(days=i) for i in range(ABSENT_BACKFILL_DAYS)]
+    dates = [d for d in dates if d < today]
+    if not dates:
+        return
+
+    student_floors = _attendance_floor(
+        'student_attendance', 'student_id', 'students')
+    staff_floors = _attendance_floor(
+        'staff_attendance', 'staff_id', 'staff')
+
+    for member_id, floor in student_floors.items():
+        for d in dates:
+            if d < floor:
+                continue
+            execute(
+                'INSERT IGNORE INTO student_attendance (student_id, date, status) '
+                'VALUES (%s, %s, %s)',
+                (member_id, d, 'Absent'),
+            )
+    for member_id, floor in staff_floors.items():
+        for d in dates:
+            if d < floor:
+                continue
+            execute(
+                'INSERT IGNORE INTO staff_attendance (staff_id, date, status) '
+                'VALUES (%s, %s, %s)',
+                (member_id, d, 'Absent'),
+            )
+
+
+@app.before_request
+def _auto_backfill_absent():
+    global _absent_backfill_last_run
+    if request.endpoint in ('healthz', 'static'):
+        return
+    today = date.today()
+    if _absent_backfill_last_run == today:
+        return
+    _absent_backfill_last_run = today
+    try:
+        backfill_absent_days()
+    except mysql.connector.Error:
+        pass
+
+
 @app.route('/')
 def home():
     if 'user_id' in session:
