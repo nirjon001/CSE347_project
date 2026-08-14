@@ -244,10 +244,11 @@
 })();
 </script>
 
-{% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>if (typeof window.Chart === 'undefined') document.write('<script src="https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');</script>
 <script>
 (function () {
+    if (typeof Chart === 'undefined') return;
     var donut = {{ my_donut|tojson }};
     var trend = {{ my_trend|tojson }};
     if (document.getElementById('myDonut')) {
@@ -285,5 +286,4 @@
     }
 })();
 </script>
-{% endblock %}
 {% endblock %}
