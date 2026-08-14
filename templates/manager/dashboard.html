@@ -90,9 +90,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>if (typeof window.Chart === 'undefined') document.write('<script src="https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');</script>
+<script type="application/json" id="chart-data">{{ {'donut': today_donut, 'trend': trend14}|tojson }}</script>
 <script>
 (function () {
     if (typeof Chart === 'undefined') return;
+    var chartData = JSON.parse(document.getElementById('chart-data').textContent);
+    var donut = chartData.donut;
+    var trend = chartData.trend;
+    var donutColors = ['#27ae60', '#e74c3c', '#3498db', '#95a5a6'];
     document.querySelectorAll('.tab-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
@@ -102,9 +107,6 @@
             if (panel) panel.classList.add('active');
         });
     });
-    var donut = {{ today_donut|tojson }};
-    var trend = {{ trend14|tojson }};
-    var donutColors = ['#27ae60', '#e74c3c', '#3498db', '#95a5a6'];
     if (document.getElementById('todayDonut')) {
         new Chart(document.getElementById('todayDonut'), {
             type: 'doughnut',
