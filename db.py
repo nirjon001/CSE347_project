@@ -15,6 +15,11 @@ from config import DB_CONFIG
 # ---------------------------------------------------------------------------
 def _open():
     conn = mysql.connector.connect(connection_timeout=15, **DB_CONFIG)
+    conn._socket.sock.settimeout(15)
+    cur = conn.cursor()
+    cur.execute("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
+    cur.close()
+    return conn
     cur = conn.cursor()
     cur.execute("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
     cur.close()

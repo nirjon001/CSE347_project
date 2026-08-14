@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 from functools import wraps
 from math import asin, cos, radians, sin, sqrt
+import os
 
 from flask import (
     Flask, flash, jsonify, redirect, render_template, request, session, url_for,
@@ -240,13 +241,15 @@ def _auto_backfill_absent():
     global _absent_backfill_last_run
     if request.endpoint in ('healthz', 'static'):
         return
+    if os.environ.get('DB_HOST') == '':
+        return
     today = date.today()
     if _absent_backfill_last_run == today:
         return
     _absent_backfill_last_run = today
     try:
         backfill_absent_days()
-    except mysql.connector.Error:
+    except Exception:
         pass
 
 
