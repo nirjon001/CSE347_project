@@ -15,11 +15,11 @@ The **same code** runs locally *and* as a free web copy. The database settings a
 │  Flask app        │          │  Render web service  ── TLS ── Aiven     │
 │  └─ config.py     │          │  (gunicorn app:app)   ────────  MySQL 8  │
 │       │           │          │        │                     (1 GB free) │
-│       ▼           │          │        └─ DB_HOST / DB_* env vars ──┘   │
+│       ▼           │          │        └─ DB_HOST / DB_* env vars ──┘    │
 │  XAMPP MariaDB    │          │                                          │
 │  (127.0.0.1:3306) │          │  Data sync via scripts\sync_web_db.bat   │
 └─────────┬─────────┘          └──────────────────────────────────────────┘
-          │
+          │                                                               |
           └── push/pull ──────────────────────────────────────────────────┘
 ```
 
