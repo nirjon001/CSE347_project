@@ -2,9 +2,10 @@ from datetime import date, datetime, timedelta
 from functools import wraps
 from math import asin, cos, radians, sin, sqrt
 import os
+import threading
 
 from flask import (
-    Flask, flash, jsonify, redirect, render_template, request, session, url_for,
+    Flask, flash, g, jsonify, redirect, render_template, request, session, url_for,
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -247,10 +248,16 @@ def _auto_backfill_absent():
     if _absent_backfill_last_run == today:
         return
     _absent_backfill_last_run = today
-    try:
-        backfill_absent_days()
-    except Exception:
-        pass
+
+    def _run_backfill():
+        with app.app_context():
+            g._db_conn = get_dedicated_connection()
+            try:
+                backfill_absent_days()
+            except Exception:
+                pass
+
+    threading.Thread(target=_run_backfill, daemon=True).start()
 
 
 @app.route('/')
