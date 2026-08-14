@@ -1,0 +1,279 @@
+<svg viewBox="0 0 1720 1330" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<defs>
+<marker id="hollow" markerWidth="14" markerHeight="12" refX="13" refY="6" orient="auto">
+<path d="M0,0 L14,6 L0,12 z" fill="white" stroke="#333" stroke-width="1.4"/>
+</marker>
+</defs>
+<rect x="0" y="0" width="1720" height="1330" fill="#fbfcfd"/>
+<text x="20" y="26" font-size="16" font-weight="bold" fill="#2c3e50">Hostel Management System — Class Diagram</text>
+<text x="20" y="46" font-size="11" fill="#666">Flask + MySQL (18 classes) — CSE347</text>
+<line x1="170.0" y1="240" x2="860.0" y2="164" stroke="#333333" stroke-width="1.8" marker-end="url(#hollow)"/>
+<line x1="860.0" y1="240" x2="860.0" y2="164" stroke="#333333" stroke-width="1.8" marker-end="url(#hollow)"/>
+<line x1="1550.0" y1="240" x2="860.0" y2="164" stroke="#333333" stroke-width="1.8" marker-end="url(#hollow)"/>
+<line x1="170.0" y1="729.0" x2="170.0" y2="965.0" stroke="#8a97a3" stroke-width="1.3"/><text x="170.0" y="767.48" font-size="10" fill="#555">1</text><text x="170.0" y="918.52" font-size="10" fill="#555">0..*</text>
+<line x1="170.0" y1="965.0" x2="860.0" y2="385.0" stroke="#8a97a3" stroke-width="1.3"/><text x="294.2" y="856.6" font-size="10" fill="#555">0..*</text><text x="735.8" y="485.4" font-size="10" fill="#555">0..1</text>
+<line x1="860.0" y1="385.0" x2="490.0" y2="689.0" stroke="#8a97a3" stroke-width="1.3"/><text x="793.4" y="435.72" font-size="10" fill="#555">1</text><text x="556.6" y="630.28" font-size="10" fill="#555">0..*</text>
+<line x1="860.0" y1="385.0" x2="790.0" y2="705.0" stroke="#8a97a3" stroke-width="1.3"/><text x="847.4" y="438.6" font-size="10" fill="#555">1</text><text x="802.6" y="643.4" font-size="10" fill="#555">0..*</text>
+<line x1="860.0" y1="385.0" x2="1110.0" y2="713.0" stroke="#8a97a3" stroke-width="1.3"/><text x="905.0" y="440.04" font-size="10" fill="#555">1</text><text x="1065.0" y="649.96" font-size="10" fill="#555">0..*</text>
+<line x1="860.0" y1="385.0" x2="490.0" y2="949.0" stroke="#8a97a3" stroke-width="1.3"/><text x="793.4" y="482.52" font-size="10" fill="#555">1</text><text x="556.6" y="843.48" font-size="10" fill="#555">0..*</text>
+<line x1="860.0" y1="385.0" x2="1550.0" y2="965.0" stroke="#8a97a3" stroke-width="1.3"/><text x="984.2" y="485.4" font-size="10" fill="#555">1</text><text x="1425.8" y="856.6" font-size="10" fill="#555">0..*</text>
+<line x1="860.0" y1="385.0" x2="490.0" y2="1225.0" stroke="#8a97a3" stroke-width="1.3"/><text x="793.4" y="532.2" font-size="10" fill="#555">1</text><text x="556.6" y="1069.8" font-size="10" fill="#555">0..*</text>
+<line x1="860.0" y1="385.0" x2="790.0" y2="949.0" stroke="#8a97a3" stroke-width="1.3"/><text x="847.4" y="482.52" font-size="10" fill="#555">1</text><text x="802.6" y="843.48" font-size="10" fill="#555">0..*</text>
+<line x1="860.0" y1="385.0" x2="1110.0" y2="973.0" stroke="#8a97a3" stroke-width="1.3"/><text x="905.0" y="486.84" font-size="10" fill="#555">1</text><text x="1065.0" y="863.16" font-size="10" fill="#555">0..*</text>
+<line x1="1550.0" y1="329.0" x2="1550.0" y2="689.0" stroke="#8a97a3" stroke-width="1.3"/><text x="1550.0" y="389.8" font-size="10" fill="#555">1</text><text x="1550.0" y="620.2" font-size="10" fill="#555">0..*</text>
+<line x1="1550.0" y1="329.0" x2="490.0" y2="949.0" stroke="#8a97a3" stroke-width="1.3"/><text x="1359.2" y="436.6" font-size="10" fill="#555">0..1</text><text x="680.8" y="833.4" font-size="10" fill="#555">0..*</text>
+<line x1="1550.0" y1="329.0" x2="1550.0" y2="965.0" stroke="#8a97a3" stroke-width="1.3"/><text x="1550.0" y="439.48" font-size="10" fill="#555">0..1</text><text x="1550.0" y="846.52" font-size="10" fill="#555">0..*</text>
+<line x1="170.0" y1="409.0" x2="170.0" y2="1225.0" stroke="#8a97a3" stroke-width="1.3"/><text x="170.0" y="551.88" font-size="10" fill="#555">1</text><text x="170.0" y="1074.12" font-size="10" fill="#555">0..*</text>
+<line x1="860.0" y1="385.0" x2="790.0" y2="1241.0" stroke="#8a97a3" stroke-width="1.3"/><text x="847.4" y="535.0799999999999" font-size="10" fill="#555">0..1</text><text x="802.6" y="1082.92" font-size="10" fill="#555">0..*</text>
+<line x1="1550.0" y1="329.0" x2="790.0" y2="1241.0" stroke="#8a97a3" stroke-width="1.3"/><text x="1413.2" y="489.15999999999997" font-size="10" fill="#555">0..1</text><text x="926.8" y="1072.84" font-size="10" fill="#555">0..*</text>
+<line x1="860.0" y1="91.0" x2="1110.0" y2="1241.0" stroke="#8a97a3" stroke-width="1.3"/><text x="905.0" y="294.0" font-size="10" fill="#555">1</text><text x="1065.0" y="1030.0" font-size="10" fill="#555">0..*</text>
+<rect x="735" y="18" width="250" height="146" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M735,44 h250" stroke="#333333" stroke-width="1.4"/>
+<rect x="735" y="18" width="250" height="26" fill="#7f8c8d" rx="3"/>
+<rect x="735" y="37" width="250" height="7" fill="#7f8c8d"/>
+<text x="860.0" y="36" font-size="13" font-weight="bold" fill="white" text-anchor="middle" font-style="italic">«abstract» User</text>
+<text x="745" y="58" font-size="11" fill="#222222">- userId: int</text>
+<text x="745" y="74" font-size="11" fill="#222222">- username: String</text>
+<text x="745" y="90" font-size="11" fill="#222222">- password: String</text>
+<text x="745" y="106" font-size="11" fill="#222222">- role: String</text>
+<text x="745" y="122" font-size="11" fill="#222222">- createdAt: Date</text>
+<path d="M735,128 h250" stroke="#333333" stroke-width="1.4"/>
+<text x="745" y="140" font-size="11" fill="#222222">+ login(username, password): bool</text>
+<text x="745" y="156" font-size="11" fill="#222222">+ changePassword(oldPwd, newPwd): bool</text>
+<rect x="40" y="240" width="260" height="338" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M40,266 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="40" y="240" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="40" y="259" width="260" height="7" fill="#2c3e50"/>
+<text x="170.0" y="258" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Manager</text>
+<text x="50" y="280" font-size="11" fill="#222222">- managerId: int</text>
+<text x="50" y="296" font-size="11" fill="#222222">- name: String</text>
+<text x="50" y="312" font-size="11" fill="#222222">- designation: String</text>
+<path d="M40,318 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="50" y="330" font-size="11" fill="#222222">+ registerStudent(): bool</text>
+<text x="50" y="346" font-size="11" fill="#222222">+ deleteStudent(studentId): bool</text>
+<text x="50" y="362" font-size="11" fill="#222222">+ allocateRoom(studentId, roomId): bool</text>
+<text x="50" y="378" font-size="11" fill="#222222">+ addHostel(): bool</text>
+<text x="50" y="394" font-size="11" fill="#222222">+ updateHostel(): bool</text>
+<text x="50" y="410" font-size="11" fill="#222222">+ viewRooms(): Room</text>
+<text x="50" y="426" font-size="11" fill="#222222">+ generateInvoice(studentId): Invoice</text>
+<text x="50" y="442" font-size="11" fill="#222222">+ updateMessMenu(): bool</text>
+<text x="50" y="458" font-size="11" fill="#222222">+ approveMessOff(messOffId): bool</text>
+<text x="50" y="474" font-size="11" fill="#222222">+ recordStudentAttendance(): bool</text>
+<text x="50" y="490" font-size="11" fill="#222222">+ recordStaffAttendance(): bool</text>
+<text x="50" y="506" font-size="11" fill="#222222">+ viewAttendance(): bool</text>
+<text x="50" y="522" font-size="11" fill="#222222">+ recordViolation(): bool</text>
+<text x="50" y="538" font-size="11" fill="#222222">+ resolveViolation(violationId): bool</text>
+<text x="50" y="554" font-size="11" fill="#222222">+ viewVisitorLogs(): Visitor</text>
+<text x="50" y="570" font-size="11" fill="#222222">+ deleteStaff(staffId): bool</text>
+<rect x="730" y="240" width="260" height="290" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M730,266 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="730" y="240" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="730" y="259" width="260" height="7" fill="#2c3e50"/>
+<text x="860.0" y="258" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Student</text>
+<text x="740" y="280" font-size="11" fill="#222222">- studentId: int</text>
+<text x="740" y="296" font-size="11" fill="#222222">- studentNo: String</text>
+<text x="740" y="312" font-size="11" fill="#222222">- name: String</text>
+<text x="740" y="328" font-size="11" fill="#222222">- email: String</text>
+<text x="740" y="344" font-size="11" fill="#222222">- phone: String</text>
+<text x="740" y="360" font-size="11" fill="#222222">- address: String</text>
+<text x="740" y="376" font-size="11" fill="#222222">- gender: String</text>
+<path d="M730,382 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="740" y="394" font-size="11" fill="#222222">+ viewProfile(): Student</text>
+<text x="740" y="410" font-size="11" fill="#222222">+ viewRoom(): Room</text>
+<text x="740" y="426" font-size="11" fill="#222222">+ submitComplaint(): bool</text>
+<text x="740" y="442" font-size="11" fill="#222222">+ viewInvoice(): Invoice</text>
+<text x="740" y="458" font-size="11" fill="#222222">+ applyMessOff(): bool</text>
+<text x="740" y="474" font-size="11" fill="#222222">+ submitFeedback(): bool</text>
+<text x="740" y="490" font-size="11" fill="#222222">+ submitLeaveRequest(): bool</text>
+<text x="740" y="506" font-size="11" fill="#222222">+ viewParcels(): Parcel</text>
+<text x="740" y="522" font-size="11" fill="#222222">+ recordAttendance(): bool</text>
+<rect x="1420" y="240" width="260" height="178" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M1420,266 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="1420" y="240" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="1420" y="259" width="260" height="7" fill="#2c3e50"/>
+<text x="1550.0" y="258" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Staff</text>
+<text x="1430" y="280" font-size="11" fill="#222222">- staffId: int</text>
+<text x="1430" y="296" font-size="11" fill="#222222">- staffNo: String</text>
+<text x="1430" y="312" font-size="11" fill="#222222">- name: String</text>
+<text x="1430" y="328" font-size="11" fill="#222222">- designation: String</text>
+<text x="1430" y="344" font-size="11" fill="#222222">- salary: double</text>
+<path d="M1420,350 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="1430" y="362" font-size="11" fill="#222222">+ registerVisitor(): bool</text>
+<text x="1430" y="378" font-size="11" fill="#222222">+ updateParcelStatus(): bool</text>
+<text x="1430" y="394" font-size="11" fill="#222222">+ recordAttendance(): bool</text>
+<text x="1430" y="410" font-size="11" fill="#222222">+ recordStudentReturn(): bool</text>
+<rect x="40" y="640" width="260" height="178" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M40,666 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="40" y="640" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="40" y="659" width="260" height="7" fill="#2c3e50"/>
+<text x="170.0" y="658" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Hostel</text>
+<text x="50" y="680" font-size="11" fill="#222222">- hostelId: int</text>
+<text x="50" y="696" font-size="11" fill="#222222">- hostelName: String</text>
+<text x="50" y="712" font-size="11" fill="#222222">- location: String</text>
+<text x="50" y="728" font-size="11" fill="#222222">- gender: String</text>
+<text x="50" y="744" font-size="11" fill="#222222">- totalRooms: int</text>
+<text x="50" y="760" font-size="11" fill="#222222">- lat: decimal</text>
+<text x="50" y="776" font-size="11" fill="#222222">- lng: decimal</text>
+<text x="50" y="792" font-size="11" fill="#222222">- radiusM: int</text>
+<path d="M40,798 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="50" y="810" font-size="11" fill="#222222">+ viewRooms(): Room</text>
+<rect x="360" y="640" width="260" height="98" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M360,666 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="360" y="640" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="360" y="659" width="260" height="7" fill="#2c3e50"/>
+<text x="490.0" y="658" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >StudentAttendance</text>
+<text x="370" y="680" font-size="11" fill="#222222">- attendanceId: int</text>
+<text x="370" y="696" font-size="11" fill="#222222">- date: Date</text>
+<text x="370" y="712" font-size="11" fill="#222222">- status: String</text>
+<path d="M360,718 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="370" y="730" font-size="11" fill="#222222">+ recordAttendance(): bool</text>
+<rect x="1420" y="640" width="260" height="98" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M1420,666 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="1420" y="640" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="1420" y="659" width="260" height="7" fill="#2c3e50"/>
+<text x="1550.0" y="658" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >StaffAttendance</text>
+<text x="1430" y="680" font-size="11" fill="#222222">- attendanceId: int</text>
+<text x="1430" y="696" font-size="11" fill="#222222">- date: Date</text>
+<text x="1430" y="712" font-size="11" fill="#222222">- status: String</text>
+<path d="M1420,718 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="1430" y="730" font-size="11" fill="#222222">+ recordAttendance(): bool</text>
+<rect x="660" y="640" width="260" height="130" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M660,666 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="660" y="640" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="660" y="659" width="260" height="7" fill="#2c3e50"/>
+<text x="790.0" y="658" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Complaint</text>
+<text x="670" y="680" font-size="11" fill="#222222">- complaintId: int</text>
+<text x="670" y="696" font-size="11" fill="#222222">- description: String</text>
+<text x="670" y="712" font-size="11" fill="#222222">- status: String</text>
+<text x="670" y="728" font-size="11" fill="#222222">- date: Date</text>
+<path d="M660,734 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="670" y="746" font-size="11" fill="#222222">+ submitComplaint(): bool</text>
+<text x="670" y="762" font-size="11" fill="#222222">+ resolveComplaint(): bool</text>
+<rect x="980" y="640" width="260" height="146" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M980,666 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="980" y="640" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="980" y="659" width="260" height="7" fill="#2c3e50"/>
+<text x="1110.0" y="658" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Invoice</text>
+<text x="990" y="680" font-size="11" fill="#222222">- invoiceId: int</text>
+<text x="990" y="696" font-size="11" fill="#222222">- invoiceType: String</text>
+<text x="990" y="712" font-size="11" fill="#222222">- amount: double</text>
+<text x="990" y="728" font-size="11" fill="#222222">- dueDate: Date</text>
+<text x="990" y="744" font-size="11" fill="#222222">- paymentStatus: String</text>
+<path d="M980,750 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="990" y="762" font-size="11" fill="#222222">+ generateInvoice(): Invoice</text>
+<text x="990" y="778" font-size="11" fill="#222222">+ updatePaymentStatus(): bool</text>
+<rect x="40" y="900" width="260" height="130" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M40,926 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="40" y="900" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="40" y="919" width="260" height="7" fill="#2c3e50"/>
+<text x="170.0" y="918" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Room</text>
+<text x="50" y="940" font-size="11" fill="#222222">- roomId: int</text>
+<text x="50" y="956" font-size="11" fill="#222222">- roomNo: String</text>
+<text x="50" y="972" font-size="11" fill="#222222">- totalBeds: int</text>
+<text x="50" y="988" font-size="11" fill="#222222">- availableBeds: int</text>
+<path d="M40,994 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="50" y="1006" font-size="11" fill="#222222">+ checkAvailability(): bool</text>
+<text x="50" y="1022" font-size="11" fill="#222222">+ assignStudent(studentId): bool</text>
+<rect x="360" y="900" width="260" height="98" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M360,926 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="360" y="900" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="360" y="919" width="260" height="7" fill="#2c3e50"/>
+<text x="490.0" y="918" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Visitor</text>
+<text x="370" y="940" font-size="11" fill="#222222">- visitorId: int</text>
+<text x="370" y="956" font-size="11" fill="#222222">- visitorName: String</text>
+<text x="370" y="972" font-size="11" fill="#222222">- visitDate: Date</text>
+<path d="M360,978 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="370" y="990" font-size="11" fill="#222222">+ registerVisitor(): bool</text>
+<rect x="660" y="900" width="260" height="98" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M660,926 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="660" y="900" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="660" y="919" width="260" height="7" fill="#2c3e50"/>
+<text x="790.0" y="918" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Feedback</text>
+<text x="670" y="940" font-size="11" fill="#222222">- feedbackId: int</text>
+<text x="670" y="956" font-size="11" fill="#222222">- description: String</text>
+<text x="670" y="972" font-size="11" fill="#222222">- date: Date</text>
+<path d="M660,978 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="670" y="990" font-size="11" fill="#222222">+ submitFeedback(): bool</text>
+<rect x="980" y="900" width="260" height="146" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M980,926 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="980" y="900" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="980" y="919" width="260" height="7" fill="#2c3e50"/>
+<text x="1110.0" y="918" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >StudentInOut</text>
+<text x="990" y="940" font-size="11" fill="#222222">- recordId: int</text>
+<text x="990" y="956" font-size="11" fill="#222222">- outDate: Date</text>
+<text x="990" y="972" font-size="11" fill="#222222">- inDate: Date</text>
+<text x="990" y="988" font-size="11" fill="#222222">- reason: String</text>
+<text x="990" y="1004" font-size="11" fill="#222222">- status: String</text>
+<path d="M980,1010 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="990" y="1022" font-size="11" fill="#222222">+ submitLeave(): bool</text>
+<text x="990" y="1038" font-size="11" fill="#222222">+ viewRecords(): StudentInOut</text>
+<rect x="1420" y="900" width="260" height="130" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M1420,926 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="1420" y="900" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="1420" y="919" width="260" height="7" fill="#2c3e50"/>
+<text x="1550.0" y="918" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Parcel</text>
+<text x="1430" y="940" font-size="11" fill="#222222">- parcelId: int</text>
+<text x="1430" y="956" font-size="11" fill="#222222">- status: String</text>
+<text x="1430" y="972" font-size="11" fill="#222222">- receivedDate: Date</text>
+<text x="1430" y="988" font-size="11" fill="#222222">- collectedAt: DateTime</text>
+<path d="M1420,994 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="1430" y="1006" font-size="11" fill="#222222">+ updateParcelStatus(): bool</text>
+<text x="1430" y="1022" font-size="11" fill="#222222">+ collectParcel(): bool</text>
+<rect x="40" y="1160" width="260" height="130" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M40,1186 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="40" y="1160" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="40" y="1179" width="260" height="7" fill="#2c3e50"/>
+<text x="170.0" y="1178" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >MessMenu</text>
+<text x="50" y="1200" font-size="11" fill="#222222">- menuId: int</text>
+<text x="50" y="1216" font-size="11" fill="#222222">- dayOfWeek: String</text>
+<text x="50" y="1232" font-size="11" fill="#222222">- mealType: String</text>
+<text x="50" y="1248" font-size="11" fill="#222222">- itemsDescription: String</text>
+<path d="M40,1254 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="50" y="1266" font-size="11" fill="#222222">+ updateMenu(): bool</text>
+<text x="50" y="1282" font-size="11" fill="#222222">+ viewMenu(): MessMenu</text>
+<rect x="360" y="1160" width="260" height="130" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M360,1186 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="360" y="1160" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="360" y="1179" width="260" height="7" fill="#2c3e50"/>
+<text x="490.0" y="1178" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >MessOff</text>
+<text x="370" y="1200" font-size="11" fill="#222222">- messOffId: int</text>
+<text x="370" y="1216" font-size="11" fill="#222222">- startDate: Date</text>
+<text x="370" y="1232" font-size="11" fill="#222222">- endDate: Date</text>
+<text x="370" y="1248" font-size="11" fill="#222222">- status: String</text>
+<path d="M360,1254 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="370" y="1266" font-size="11" fill="#222222">+ applyMessOff(): bool</text>
+<text x="370" y="1282" font-size="11" fill="#222222">+ approveMessOff(): bool</text>
+<rect x="660" y="1160" width="260" height="162" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M660,1186 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="660" y="1160" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="660" y="1179" width="260" height="7" fill="#2c3e50"/>
+<text x="790.0" y="1178" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Violation</text>
+<text x="670" y="1200" font-size="11" fill="#222222">- violationId: int</text>
+<text x="670" y="1216" font-size="11" fill="#222222">- description: String</text>
+<text x="670" y="1232" font-size="11" fill="#222222">- date: Date</text>
+<text x="670" y="1248" font-size="11" fill="#222222">- status: String</text>
+<text x="670" y="1264" font-size="11" fill="#222222">- resolvedAt: Date</text>
+<text x="670" y="1280" font-size="11" fill="#222222">- recordedBy: int</text>
+<path d="M660,1286 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="670" y="1298" font-size="11" fill="#222222">+ recordViolation(): bool</text>
+<text x="670" y="1314" font-size="11" fill="#222222">+ resolveViolation(): bool</text>
+<rect x="980" y="1160" width="260" height="162" fill="white" stroke="#333333" stroke-width="1.4" rx="3"/>
+<path d="M980,1186 h260" stroke="#333333" stroke-width="1.4"/>
+<rect x="980" y="1160" width="260" height="26" fill="#2c3e50" rx="3"/>
+<rect x="980" y="1179" width="260" height="7" fill="#2c3e50"/>
+<text x="1110.0" y="1178" font-size="13" font-weight="bold" fill="white" text-anchor="middle" >Notification</text>
+<text x="990" y="1200" font-size="11" fill="#222222">- notificationId: int</text>
+<text x="990" y="1216" font-size="11" fill="#222222">- title: String</text>
+<text x="990" y="1232" font-size="11" fill="#222222">- message: String</text>
+<text x="990" y="1248" font-size="11" fill="#222222">- link: String</text>
+<text x="990" y="1264" font-size="11" fill="#222222">- isRead: boolean</text>
+<text x="990" y="1280" font-size="11" fill="#222222">- createdAt: Date</text>
+<path d="M980,1286 h260" stroke="#333333" stroke-width="1.4"/>
+<text x="990" y="1298" font-size="11" fill="#222222">+ markRead(): bool</text>
+<text x="990" y="1314" font-size="11" fill="#222222">+ markAllRead(): bool</text>
+<rect x="20" y="1284" width="300" height="30" fill="white" stroke="#ccc" rx="4"/>
+<line x1="30" y1="1299" x2="70" y2="1299" stroke="#333" stroke-width="1.8" marker-end="url(#hollow)"/>
+<text x="78" y="1303" font-size="11" fill="#444">Inheritance (generalization)</text>
+<line x1="210" y1="1299" x2="250" y2="1299" stroke="#8a97a3" stroke-width="1.3"/>
+<text x="258" y="1303" font-size="11" fill="#444">Association (with multiplicity)</text>
+</svg>
