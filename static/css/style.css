@@ -886,7 +886,7 @@ body.auth-page .container {
 
     .card .value { font-size: 26px; }
 
-    .map-canvas { height: 220px; }
+    .map-canvas { height: 220px; width: 100%; }
 
     .auth-wrap { padding: 16px; }
 
