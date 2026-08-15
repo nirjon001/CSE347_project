@@ -11,8 +11,9 @@
 [![MySQL](https://img.shields.io/badge/MySQL%2FMariaDB-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com)
 [![Render](https://img.shields.io/badge/Host-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com)
 [![Chart.js](https://img.shields.io/badge/Charts-Chart.js-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white)](https://www.chartjs.org)
-![Security](https://img.shields.io/badge/Security-%E2%9C%93%20Parameterized-2ea44f?style=for-the-badge)
-![Status](https://img.shields.io/badge/Status-%E2%9C%93%20LIVE-00C853?style=for-the-badge)
+[![Security](https://img.shields.io/badge/Security-%E2%9C%93%20Parameterized-2ea44f?style=for-the-badge)]
+[![Status](https://img.shields.io/badge/Status-%E2%9C%93%20LIVE-00C853?style=for-the-badge)]
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 ## 🌐 **LIVE DEMO**
 
@@ -270,7 +271,10 @@ CSE347_project/
 ├── ☁️ DEPLOYMENT.md                 # Full web-deployment guide (Render + Aiven + sync)
 ├── 📄 report.md                     # Code walkthrough — request flow, routes, class mapping, security
 ├── 📄 Requirements Definition.pdf   # Functional & non-functional requirements (course deliverable)
-└── 📝 AGENTS .md                    # Project memory / changelog for developers
+├── 📄 Requirements Definition v2.docx   # Renewed requirements (current v4 system)
+├── 📄 Feasibility-Analysis-v2.docx  # Renewed feasibility (Taka costs + PERT schedule)
+├── 📝 AGENTS .md                    # Project memory / changelog for developers
+└── 📜 LICENSE                       # MIT license
 ```
 
 ---
@@ -283,6 +287,9 @@ CSE347_project/
 | [📄 `report.md`](report.md) | Request flow, every route, class-diagram mapping, security measures |
 | [📊 `svg/class_diagram.svg`](svg/class_diagram.svg) | UML class diagram — 18 classes, attributes & methods |
 | [📄 `Requirements Definition.pdf`](Requirements%20Definition.pdf) | Functional & non-functional requirements (course deliverable) |
+| [📄 `Requirements Definition v2.docx`](Requirements%20Definition%20v2.docx) | Renewed requirements matching the current v4 system |
+| [📄 `Feasibility-Analysis-v2.docx`](Feasibility-Analysis-v2.docx) | Renewed feasibility — Taka cost breakdown + PERT schedule |
+| [📜 `LICENSE`](LICENSE) | MIT license — free to use, copy, modify |
 
 ---
 
