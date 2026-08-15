@@ -11,8 +11,8 @@
 [![MySQL](https://img.shields.io/badge/MySQL%2FMariaDB-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com)
 [![Render](https://img.shields.io/badge/Host-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://render.com)
 [![Chart.js](https://img.shields.io/badge/Charts-Chart.js-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white)](https://www.chartjs.org)
-[![Security](https://img.shields.io/badge/Security-%E2%9C%93%20Parameterized-2ea44f?style=for-the-badge)]
-[![Status](https://img.shields.io/badge/Status-%E2%9C%93%20LIVE-00C853?style=for-the-badge)]
+![Security](https://img.shields.io/badge/Security-%E2%9C%93%20Parameterized-2ea44f?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-%E2%9C%93%20LIVE-00C853?style=for-the-badge)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 ## 🌐 **LIVE DEMO**
