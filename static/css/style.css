@@ -668,7 +668,7 @@ body.auth-page .container {
 .unread-popup-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 
 /* ---------- Geo-fence attendance map ---------- */
-.map-canvas { height: 300px; width: 50%; border-radius: var(--radius); border: 1px solid var(--border); }
+.map-canvas { height: 300px; width: 50%; border-radius: var(--radius); border: 1px solid var(--border); position: relative; z-index: 0; }
 
 /* ---------- Checkbox labels ---------- */
 .check-label {
