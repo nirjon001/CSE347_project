@@ -273,6 +273,8 @@ CSE347_project/
 ├── 📄 Requirements Definition.pdf   # Functional & non-functional requirements (course deliverable)
 ├── 📄 Requirements Definition v2.docx   # Renewed requirements (current v4 system)
 ├── 📄 Feasibility-Analysis-v2.docx  # Renewed feasibility (Taka costs + PERT schedule)
+├── 📄 Project Hostel Management System Presentation.pdf  # Course presentation slides
+├── 📄 Final Report of Project Hostel Management System.pdf  # Final course report
 ├── 📝 AGENTS .md                    # Project memory / changelog for developers
 └── 📜 LICENSE                       # MIT license
 ```
@@ -289,6 +291,8 @@ CSE347_project/
 | [📄 `Requirements Definition.pdf`](Requirements%20Definition.pdf) | Functional & non-functional requirements (course deliverable) |
 | [📄 `Requirements Definition v2.docx`](Requirements%20Definition%20v2.docx) | Renewed requirements matching the current v4 system |
 | [📄 `Feasibility-Analysis-v2.docx`](Feasibility-Analysis-v2.docx) | Renewed feasibility — Taka cost breakdown + PERT schedule |
+| [📄 `Project Hostel Management System Presentation.pdf`](Project%20Hostel%20Management%20System%20Presentation.pdf) | Course presentation slides |
+| [📄 `Final Report of Project Hostel Management System.pdf`](Final%20Report%20of%20Project%20Hostel%20Management%20System.pdf) | Final course report |
 | [📜 `LICENSE`](LICENSE) | MIT license — free to use, copy, modify |
 
 ---
